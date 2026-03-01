@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Maskable: full bleed background, content in safe zone (inner 80%) -->
+  <rect width="512" height="512" fill="#2563eb"/>
+  <g transform="translate(256,256) scale(2.1)">
+    <!-- Rear wheel -->
+    <circle cx="-30" cy="16" r="28" fill="none" stroke="white" stroke-width="3.5"/>
+    <circle cx="-30" cy="16" r="3.5" fill="white"/>
+    <!-- Front wheel -->
+    <circle cx="34" cy="16" r="28" fill="none" stroke="white" stroke-width="3.5"/>
+    <circle cx="34" cy="16" r="3.5" fill="white"/>
+    <!-- Frame -->
+    <polyline points="-30,16 -6,-24 34,16" fill="none" stroke="white" stroke-width="4.5" stroke-linejoin="round"/>
+    <line x1="-6" y1="-24" x2="18" y2="-24" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+    <line x1="18" y1="-24" x2="34" y2="16" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+    <line x1="-6" y1="-24" x2="-16" y2="16" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+    <!-- Handlebars -->
+    <line x1="18" y1="-24" x2="22" y2="-34" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="19" y1="-32" x2="26" y2="-34" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Seat -->
+    <line x1="-6" y1="-24" x2="-6" y2="-34" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="-14" y1="-34" x2="2" y2="-34" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+    <!-- Pedal crank -->
+    <circle cx="-16" cy="16" r="6" fill="none" stroke="white" stroke-width="2.5"/>
+  </g>
+</svg>

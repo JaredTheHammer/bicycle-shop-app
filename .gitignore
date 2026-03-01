@@ -1,0 +1,16 @@
+node_modules
+dist
+.vite
+*.local
+
+# Legacy / reference files
+bicycle-shop.jsx
+_Current_Session_Status.md
+_Project_State_Handoff.md
+Start Bike Shop.bat
+Start Bike Shop.vbs
+Bike Maintenance Folder from Grant/
+ROADMAP.md
+
+# Claude Code
+.claude/
