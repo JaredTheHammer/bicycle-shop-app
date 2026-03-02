@@ -332,7 +332,7 @@ function AppInner() {
             </div>
           )}
           <div className="max-w-6xl mx-auto p-4 sm:p-6">
-            {page === "dashboard" && perms.dashboardFull && <Dashboard db={db} />}
+            {page === "dashboard" && perms.dashboardFull && <Dashboard db={db} onNavigate={setPage} perms={perms} />}
             {page === "myqueue" && <TechQueueDashboard db={db} setDb={setDb} currentUser={currentUser} />}
             {page === "clienthome" && perms.clientDashboard && <ClientDashboard db={db} currentUser={currentUser} onReportIssue={() => setPage("reportissue")} onBookBike={() => setPage("booking")} />}
             {page === "booking" && perms.bookingsCreate && <BookingWizard db={db} setDb={setDb} currentUser={currentUser} onBack={() => setPage("clienthome")} preselectedClientId={currentUser.properties?.[0]} />}
