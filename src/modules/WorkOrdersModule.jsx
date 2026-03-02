@@ -4,7 +4,7 @@ import {
   Filter, ArrowLeft, Clock, CheckCircle, AlertTriangle, MoveRight, Star,
   Columns3, List, Eye, CircleAlert, DollarSign, ArrowRightLeft, Check, ClipboardCheck, Package, User
 } from "lucide-react";
-import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge } from "../components/ui.jsx";
+import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge, useConfirm, useToast } from "../components/ui.jsx";
 import { ChecklistPanel, ChecklistBadge } from "../components/ChecklistPanel.jsx";
 import { computePmStatus, PmStatusBadge } from "../lib/pm-engine.jsx";
 import { generateChecklist, checklistStats } from "../lib/checklist.js";
@@ -22,6 +22,8 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
   const [filterTech, setFilterTech] = useState("all");
   const [filterBike, setFilterBike] = useState("all");
   const [showResolved, setShowResolved] = useState(false);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const allWorkOrders = db.workOrders || [];
   // Techs only see their assigned work orders
@@ -51,6 +53,7 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
       updated.workOrders = [...updated.workOrders, { ...wo, id: genId(), createdAt: now, updatedAt: now }];
     }
     setDb(updated); saveDB(updated); setShowForm(false); setEditing(null);
+    toast.success(wo.id ? "Work order updated" : "Work order created");
   }
 
   function moveWO(woId, newStatus) {
@@ -79,11 +82,12 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
     setDb(updated); saveDB(updated);
   }
 
-  function deleteWO(id) {
-    if (!confirm("Delete this work order?")) return;
+  async function deleteWO(id) {
+    if (!await confirm("Delete this work order? This cannot be undone.", { title: "Delete work order?", variant: "danger" })) return;
     const updated = { ...db, workOrders: db.workOrders.filter(wo => wo.id !== id) };
     setDb(updated); saveDB(updated);
     if (selectedWO === id) setSelectedWO(null);
+    toast.success("Work order deleted");
   }
 
   function updateWOChecklist(woId, newChecklist) {
@@ -192,8 +196,8 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
                     });
                     if (toolsAtWorkshop.length === 0) return null;
                     return (
-                      <button onClick={() => {
-                        if (!confirm(`Check out ${toolsAtWorkshop.length} tool(s) to ${client?.name || "property"}?`)) return;
+                      <button onClick={async () => {
+                        if (!await confirm(`Check out ${toolsAtWorkshop.length} tool(s) to ${client?.name || "property"}?`, { title: "Check out tools?", variant: "warning", confirmLabel: "Check Out" })) return;
                         const now = new Date().toISOString();
                         let updatedTools = [...db.tools];
                         const newLogs = [];
@@ -205,6 +209,7 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
                         });
                         const upd = { ...db, tools: updatedTools, toolLocationLog: [...(db.toolLocationLog || []), ...newLogs] };
                         setDb(upd); saveDB(upd);
+                        toast.success(`${toolsAtWorkshop.length} tool(s) checked out`);
                       }} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
                         <ArrowRightLeft size={12} /> Check out to site
                       </button>
@@ -413,6 +418,7 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
 }
 
 function WOForm({ initial, db, onSave, onCancel }) {
+  const confirm = useConfirm();
   const [form, setForm] = useState({ ...initial });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -434,8 +440,8 @@ function WOForm({ initial, db, onSave, onCancel }) {
     set("checklist", generateChecklist(bikeType));
   }
 
-  function handleResetChecklist() {
-    if (!confirm("Reset all checklist items to pending?")) return;
+  async function handleResetChecklist() {
+    if (!await confirm("Reset all checklist items to pending? This will clear any existing progress.", { title: "Reset checklist?", variant: "warning", confirmLabel: "Reset" })) return;
     handleGenerateChecklist();
   }
 

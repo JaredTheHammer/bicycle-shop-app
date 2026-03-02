@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ShoppingCart, Plus, Edit2, X, Save, Trash2, ThumbsUp, ThumbsDown, Truck, Clock, CheckCircle, Eye, Package } from "lucide-react";
-import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge } from "../components/ui.jsx";
+import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, useConfirm, useToast } from "../components/ui.jsx";
 import { genId, saveDB } from "../lib/db.js";
 import { PERMISSIONS } from "../lib/constants.js";
 
@@ -20,6 +20,8 @@ export function PurchaseRequestPanel({ db, setDb, workOrderId }) {
   const [newPartId, setNewPartId] = useState("");
   const [newQty, setNewQty] = useState(1);
   const [newNotes, setNewNotes] = useState("");
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const requests = (db.purchaseRequests || []).filter(pr => pr.workOrderId === workOrderId);
   const wo = (db.workOrders || []).find(w => w.id === workOrderId);
@@ -30,7 +32,7 @@ export function PurchaseRequestPanel({ db, setDb, workOrderId }) {
   const compatParts = bike ? allParts.filter(p => (p.compatibleBikeIds || []).includes(bike.id)) : allParts;
   const otherParts = bike ? allParts.filter(p => !(p.compatibleBikeIds || []).includes(bike.id)) : [];
 
-  function createRequest() {
+  async function createRequest() {
     if (!newPartId) return;
     const part = allParts.find(p => p.id === newPartId);
     const pr = {
@@ -50,11 +52,12 @@ export function PurchaseRequestPanel({ db, setDb, workOrderId }) {
     if (bike && part && !(part.compatibleBikeIds || []).includes(bike.id)) {
       warnings.push(`Part may not be compatible with ${bike.nickname || bike.make}.`);
     }
-    if (warnings.length > 0 && !confirm(`Warnings:\n${warnings.join("\n")}\n\nProceed with request?`)) return;
+    if (warnings.length > 0 && !await confirm(`${warnings.join("\n")}\n\nProceed with request?`, { title: "Compatibility warnings", variant: "warning", confirmLabel: "Proceed" })) return;
 
     const updated = { ...db, purchaseRequests: [...(db.purchaseRequests || []), pr] };
     setDb(updated); saveDB(updated);
     setShowAddForm(false); setNewPartId(""); setNewQty(1); setNewNotes("");
+    toast.success("Purchase request created");
   }
 
   function updatePRStatus(prId, newStatus, approverField, approverId) {
@@ -76,10 +79,11 @@ export function PurchaseRequestPanel({ db, setDb, workOrderId }) {
     setDb(updated); saveDB(updated);
   }
 
-  function deletePR(prId) {
-    if (!confirm("Delete this purchase request?")) return;
+  async function deletePR(prId) {
+    if (!await confirm("Delete this purchase request?", { title: "Delete request?", variant: "danger" })) return;
     const updated = { ...db, purchaseRequests: (db.purchaseRequests || []).filter(pr => pr.id !== prId) };
     setDb(updated); saveDB(updated);
+    toast.success("Purchase request deleted");
   }
 
   return (

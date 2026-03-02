@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Wrench, Plus, Edit2, Search, ChevronDown, ChevronRight, X, Save, Trash2, Filter, ArrowLeft, ArrowRightLeft, Building2, History, MapPinned, Check, Eye, QrCode, RotateCcw, MoveRight, AlertTriangle, List } from "lucide-react";
-import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge } from "../components/ui.jsx";
+import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge, useConfirm, useToast } from "../components/ui.jsx";
 import { QRLabel, QRModal, BulkQRPrintButton, assetQRValue } from "../components/QRWidgets.jsx";
 import { genId, saveDB } from "../lib/db.js";
 import { PERMISSIONS, TOOL_LOCATIONS } from "../lib/constants.js";
@@ -27,6 +27,8 @@ export function ToolsModule({ db, setDb, perms = PERMISSIONS.owner, currentUser 
   const [view, setView] = useState("list"); // list | distribution | log
   const [showCheckout, setShowCheckout] = useState(null); // toolId
   const [showHistory, setShowHistory] = useState(null); // toolId
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const categories = ["All", ...new Set(db.tools.map(t => t.category))];
   const filtered = db.tools.filter(t => {
@@ -40,18 +42,22 @@ export function ToolsModule({ db, setDb, perms = PERMISSIONS.owner, currentUser 
 
   function saveTool(tool) {
     const updated = { ...db };
+    const isNew = !tool.id;
     if (tool.id) {
       updated.tools = updated.tools.map(t => t.id === tool.id ? tool : t);
     } else {
       updated.tools = [...updated.tools, { ...tool, id: genId(), currentPropertyId: null, checkedOutBy: null }];
     }
     setDb(updated); saveDB(updated); setShowForm(false); setEditing(null);
+    toast.success(isNew ? "Tool added" : "Tool updated");
   }
 
-  function deleteTool(id) {
-    if (!confirm("Delete this tool?")) return;
+  async function deleteTool(id) {
+    const tool = db.tools.find(t => t.id === id);
+    if (!await confirm(`Delete "${tool?.name || "this tool"}"?`, { title: "Delete tool?", variant: "danger" })) return;
     const updated = { ...db, tools: db.tools.filter(t => t.id !== id) };
     setDb(updated); saveDB(updated);
+    toast.success("Tool deleted");
   }
 
   function checkoutTool(toolId, toPropertyId, notes = "", workOrderId = null) {

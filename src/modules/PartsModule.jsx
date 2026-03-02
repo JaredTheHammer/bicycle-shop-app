@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Package, Plus, Edit2, Search, X, Save, Trash2, Filter, ArrowLeft, DollarSign, Eye, ShoppingCart, TriangleAlert, MinusCircle, CirclePlus } from "lucide-react";
-import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge } from "../components/ui.jsx";
+import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, useConfirm, useToast } from "../components/ui.jsx";
 import { genId, saveDB } from "../lib/db.js";
 import { PERMISSIONS } from "../lib/constants.js";
 
@@ -14,6 +14,8 @@ export function PartsModule({ db, setDb, perms = PERMISSIONS.owner }) {
   const [editing, setEditing] = useState(null);
   const [selectedBikeFilter, setSelectedBikeFilter] = useState("all");
   const [showLowStock, setShowLowStock] = useState(false);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const parts = db.parts || [];
 
@@ -29,18 +31,22 @@ export function PartsModule({ db, setDb, perms = PERMISSIONS.owner }) {
 
   function savePart(part) {
     const updated = { ...db };
+    const isNew = !part.id;
     if (part.id) {
       updated.parts = updated.parts.map(p => p.id === part.id ? part : p);
     } else {
       updated.parts = [...updated.parts, { ...part, id: genId() }];
     }
     setDb(updated); saveDB(updated); setShowForm(false); setEditing(null);
+    toast.success(isNew ? "Part added" : "Part updated");
   }
 
-  function deletePart(id) {
-    if (!confirm("Delete this part?")) return;
+  async function deletePart(id) {
+    const part = (db.parts || []).find(p => p.id === id);
+    if (!await confirm(`Delete "${part?.name || "this part"}"?`, { title: "Delete part?", variant: "danger" })) return;
     const updated = { ...db, parts: db.parts.filter(p => p.id !== id) };
     setDb(updated); saveDB(updated);
+    toast.success("Part deleted");
   }
 
   function adjustStock(partId, delta) {

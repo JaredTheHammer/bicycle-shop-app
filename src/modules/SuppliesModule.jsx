@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Droplets, Plus, Edit2, Search, X, Save, Trash2, Filter, ArrowLeft, Eye, TriangleAlert, MinusCircle, CirclePlus } from "lucide-react";
-import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge } from "../components/ui.jsx";
+import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, useConfirm, useToast } from "../components/ui.jsx";
 import { genId, saveDB } from "../lib/db.js";
 import { PERMISSIONS } from "../lib/constants.js";
 
@@ -11,6 +11,8 @@ export function SuppliesModule({ db, setDb, perms = PERMISSIONS.owner }) {
   const [catFilter, setCatFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const supplies = db.supplies || [];
   const filtered = supplies.filter(s => catFilter === "All" || s.category === catFilter);
@@ -18,18 +20,22 @@ export function SuppliesModule({ db, setDb, perms = PERMISSIONS.owner }) {
 
   function saveSupply(supply) {
     const updated = { ...db };
+    const isNew = !supply.id;
     if (supply.id) {
       updated.supplies = updated.supplies.map(s => s.id === supply.id ? supply : s);
     } else {
       updated.supplies = [...updated.supplies, { ...supply, id: genId() }];
     }
     setDb(updated); saveDB(updated); setShowForm(false); setEditing(null);
+    toast.success(isNew ? "Supply added" : "Supply updated");
   }
 
-  function deleteSupply(id) {
-    if (!confirm("Delete this supply item?")) return;
+  async function deleteSupply(id) {
+    const supply = (db.supplies || []).find(s => s.id === id);
+    if (!await confirm(`Delete "${supply?.name || "this supply"}"?`, { title: "Delete supply?", variant: "danger" })) return;
     const updated = { ...db, supplies: db.supplies.filter(s => s.id !== id) };
     setDb(updated); saveDB(updated);
+    toast.success("Supply deleted");
   }
 
   function adjustStock(supplyId, delta) {
