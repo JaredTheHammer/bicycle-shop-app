@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bike, User, LogOut, WifiOff, Smartphone, RefreshCw, CloudOff, Menu, X } from "lucide-react";
 
 // ─── Lib ─────────────────────────────────────────────────────────────
@@ -8,6 +8,7 @@ import { ALL_NAV_ITEMS } from "./lib/constants.js";
 
 // ─── Components ──────────────────────────────────────────────────────
 import { LoginScreen } from "./components/LoginScreen.jsx";
+import { ConfirmProvider, ToastProvider, LoadingSkeleton, useConfirm, useToast } from "./components/ui.jsx";
 
 // ─── Feature Modules ─────────────────────────────────────────────────
 import { Dashboard } from "./modules/Dashboard.jsx";
@@ -23,8 +24,18 @@ import { SuppliesModule } from "./modules/SuppliesModule.jsx";
 import { TripModule } from "./modules/TripModule.jsx";
 import { BikeBookingModule, BookingWizard } from "./modules/BookingModule.jsx";
 
-// ─── App ─────────────────────────────────────────────────────────────
+// ─── App (wrapped with providers at bottom) ─────────────────────────
 export default function App() {
+  return (
+    <ConfirmProvider>
+      <ToastProvider>
+        <AppInner />
+      </ToastProvider>
+    </ConfirmProvider>
+  );
+}
+
+function AppInner() {
   const [db, setDb] = useState(() => {
     const initial = loadDB();
     const withPM = autoGeneratePMWorkOrders(initial);
@@ -35,6 +46,9 @@ export default function App() {
   const [page, setPage] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [hydrating, setHydrating] = useState(true);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   // ─── PWA: Online status, install prompt, update banner ──────────
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -51,11 +65,12 @@ export default function App() {
   // ─── Supabase hydration: fetch fresh data on mount ────────────
   useEffect(() => {
     fetchDB().then(freshDb => {
-      if (!freshDb) return;
+      if (!freshDb) { setHydrating(false); return; }
       const withPM = autoGeneratePMWorkOrders(freshDb);
       setDb(withPM);
       if (withPM !== freshDb) saveDB(withPM);
-    }).catch(e => console.warn("Supabase fetch failed, using local data", e));
+    }).catch(e => console.warn("Supabase fetch failed, using local data", e))
+      .finally(() => setHydrating(false));
   }, []);
 
   // ─── Supabase Auth: validate session + listen for changes ──────
@@ -138,6 +153,10 @@ export default function App() {
   if (!auth || !currentUser) {
     return <LoginScreen onLogin={handleLogin} />;
   }
+
+  // ─── Loading skeleton during Supabase hydration ──────────────────
+  // Show skeleton only briefly while Supabase data loads (localStorage data is already in state)
+  // We don't block the whole app — just show it overlaid if still hydrating after auth
 
   const roleColors = {
     owner: "bg-purple-100 text-purple-800",
@@ -229,7 +248,7 @@ export default function App() {
               {perms.deleteRecords && (
                 <>
                   <p className="text-xs text-gray-400">Data stored locally</p>
-                  <button onClick={() => { if (confirm("Reset all data to defaults?")) { const fresh = { ...defaultDB, _schemaVersion: DB_SCHEMA_VERSION }; saveDB(fresh); setDb(fresh); } }}
+                  <button onClick={async () => { if (await confirm("This will erase all local data and reload defaults from Supabase. This cannot be undone.", { title: "Reset all data?", variant: "danger", confirmLabel: "Reset" })) { const fresh = { ...defaultDB, _schemaVersion: DB_SCHEMA_VERSION }; saveDB(fresh); setDb(fresh); toast.success("Data reset to defaults"); } }}
                     className="text-xs text-red-400 hover:text-red-600">Reset to defaults</button>
                 </>
               )}

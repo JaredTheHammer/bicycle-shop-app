@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Bike, Plus, Edit2, Search, ChevronDown, ChevronRight, X, Save, Filter, ArrowLeft, Star, Trash2, Eye, Mountain, Gauge, QrCode } from "lucide-react";
-import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge, StatCard } from "../components/ui.jsx";
+import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge, StatCard, useConfirm, useToast } from "../components/ui.jsx";
 import { QRLabel, QRModal, BulkQRPrintButton, assetQRValue } from "../components/QRWidgets.jsx";
 import { computePmStatus, PmStatusBadge } from "../lib/pm-engine.jsx";
 import { genId, saveDB } from "../lib/db.js";
@@ -13,6 +13,8 @@ export function BicyclesModule({ db, setDb, perms = PERMISSIONS.owner, currentUs
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showQR, setShowQR] = useState(false);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const filtered = db.bicycles.filter(b =>
     `${b.make} ${b.model} ${b.nickname} ${b.serial}`.toLowerCase().includes(search.toLowerCase())
@@ -28,18 +30,22 @@ export function BicyclesModule({ db, setDb, perms = PERMISSIONS.owner, currentUs
 
   function saveBike(bike) {
     const updated = { ...db };
+    const isNew = !bike.id;
     if (bike.id) {
       updated.bicycles = updated.bicycles.map(b => b.id === bike.id ? bike : b);
     } else {
       updated.bicycles = [...updated.bicycles, { ...bike, id: genId() }];
     }
     setDb(updated); saveDB(updated); setShowForm(false); setEditing(null);
+    toast.success(isNew ? "Bicycle added" : "Bicycle updated");
   }
 
-  function deleteBike(id) {
-    if (!confirm("Delete this bicycle and its maintenance records?")) return;
+  async function deleteBike(id) {
+    const bike = db.bicycles.find(b => b.id === id);
+    if (!await confirm(`Delete "${bike?.nickname || bike?.make + ' ' + bike?.model}" and its maintenance records?`, { title: "Delete bicycle?", variant: "danger" })) return;
     const updated = { ...db, bicycles: db.bicycles.filter(b => b.id !== id), maintenance: db.maintenance.filter(m => m.bicycleId !== id) };
     setDb(updated); saveDB(updated); setSelected(null);
+    toast.success("Bicycle deleted");
   }
 
   if (selected) {

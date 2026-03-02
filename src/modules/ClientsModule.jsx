@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Users, Plus, Edit2, Search, ChevronRight, X, Save, Trash2, Eye } from "lucide-react";
-import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge } from "../components/ui.jsx";
+import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, useConfirm, useToast } from "../components/ui.jsx";
 import { genId, saveDB } from "../lib/db.js";
 import { PERMISSIONS } from "../lib/constants.js";
 
@@ -9,6 +9,8 @@ export function ClientsModule({ db, setDb, perms = PERMISSIONS.owner }) {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const filtered = db.clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()));
 
@@ -16,18 +18,22 @@ export function ClientsModule({ db, setDb, perms = PERMISSIONS.owner }) {
 
   function saveClient(client) {
     const updated = { ...db };
+    const isNew = !client.id;
     if (client.id) {
       updated.clients = updated.clients.map(c => c.id === client.id ? client : c);
     } else {
       updated.clients = [...updated.clients, { ...client, id: genId() }];
     }
     setDb(updated); saveDB(updated); setShowForm(false); setEditing(null);
+    toast.success(isNew ? "Client added" : "Client updated");
   }
 
-  function deleteClient(id) {
-    if (!confirm("Delete this client and unlink their bicycles?")) return;
+  async function deleteClient(id) {
+    const client = db.clients.find(c => c.id === id);
+    if (!await confirm(`Delete "${client?.name}" and unlink their bicycles?`, { title: "Delete client?", variant: "danger" })) return;
     const updated = { ...db, clients: db.clients.filter(c => c.id !== id) };
     setDb(updated); saveDB(updated);
+    toast.success("Client deleted");
   }
 
   const bikeCountForClient = (cid) => db.bicycles.filter(b => b.clientId === cid).length;
@@ -85,4 +91,3 @@ export function ClientForm({ initial, onSave, onCancel }) {
     </div>
   );
 }
-

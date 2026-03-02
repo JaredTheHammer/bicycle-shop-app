@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Wrench, Plus, Edit2, Search, ChevronDown, X, Save, Trash2, Filter, ArrowLeft, Clock, Eye, Calendar, ChevronRight, CheckCircle, ClipboardCheck } from "lucide-react";
-import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge } from "../components/ui.jsx";
+import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge, useConfirm, useToast } from "../components/ui.jsx";
 import { genId, saveDB } from "../lib/db.js";
 
 // ─── Maintenance Module ──────────────────────────────────────────────
@@ -9,6 +9,8 @@ export function MaintenanceModule({ db, setDb }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [selectedMaint, setSelectedMaint] = useState(null);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const filtered = db.maintenance.filter(m => statusFilter === "All" || m.status === statusFilter.toLowerCase())
     .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate));
@@ -29,13 +31,15 @@ export function MaintenanceModule({ db, setDb }) {
       updated.maintenance = [...updated.maintenance, { ...m, id: genId() }];
     }
     setDb(updated); saveDB(updated); setShowForm(false); setEditing(null);
+    toast.success(m.id ? "Maintenance record updated" : "Maintenance record created");
   }
 
-  function deleteMaint(id) {
-    if (!confirm("Delete this maintenance record?")) return;
+  async function deleteMaint(id) {
+    if (!await confirm("Delete this maintenance record? This cannot be undone.", { title: "Delete record?", variant: "danger" })) return;
     const updated = { ...db, maintenance: db.maintenance.filter(m => m.id !== id) };
     setDb(updated); saveDB(updated);
     if (selectedMaint === id) setSelectedMaint(null);
+    toast.success("Maintenance record deleted");
   }
 
   function completeMaint(id) {
@@ -205,6 +209,7 @@ export function MaintenanceModule({ db, setDb }) {
 }
 
 export function MaintForm({ initial, bicycles, clients, onSave, onCancel }) {
+  const confirm = useConfirm();
   const [form, setForm] = useState({ ...initial, partsStr: (initial.parts || []).join(", ") });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const types = ["Tune-Up", "Chain Replacement", "Brake Service", "Wheel Truing", "Suspension Service", "Drivetrain Overhaul", "Bearing Service", "Cable Replacement", "Tire Replacement", "Full Overhaul", "Safety Inspection", "Fitting", "Custom Build", "Other"];
@@ -223,8 +228,8 @@ export function MaintForm({ initial, bicycles, clients, onSave, onCancel }) {
     set("checklist", generateChecklist(bikeType));
   }
 
-  function handleResetChecklist() {
-    if (!confirm("Reset all checklist items to pending? This will clear any existing progress.")) return;
+  async function handleResetChecklist() {
+    if (!await confirm("Reset all checklist items to pending? This will clear any existing progress.", { title: "Reset checklist?", variant: "warning", confirmLabel: "Reset" })) return;
     const bikeType = selectedBike?.type || "Road";
     set("checklist", generateChecklist(bikeType));
   }
