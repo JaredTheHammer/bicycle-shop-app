@@ -94,6 +94,9 @@ export function Dashboard({ db }) {
                 {pm.daysSinceService !== null && (
                   <p className="text-xs text-gray-400 mt-1">{pm.daysSinceService}d since service | {pm.rideDaysSinceLastPM} ride-days</p>
                 )}
+                {pm.status !== "green" && pm.reason && (
+                  <p className="text-xs text-gray-600 mt-0.5">{pm.reason}</p>
+                )}
                 {pm.nextDueDate && pm.status !== "green" && (
                   <p className="text-xs text-gray-400">Due: {pm.nextDueDate}</p>
                 )}

@@ -424,7 +424,7 @@ export function BikeBookingModule({ db, setDb, perms, currentUser }) {
             <CalendarCheck size={28} className="text-blue-400" />
           </div>
           <p className="text-gray-700 font-semibold text-lg">
-            {filter !== "all" ? `No ${BOOKING_STATUSES[filter]?.label.toLowerCase()} bookings` : "No bookings yet"}
+            {filter !== "all" ? `No ${BOOKING_STATUSES[filter]?.label?.toLowerCase() ?? filter} bookings` : "No bookings yet"}
           </p>
           <p className="text-sm text-gray-400 mt-1 max-w-xs mx-auto">
             {filter !== "all"
