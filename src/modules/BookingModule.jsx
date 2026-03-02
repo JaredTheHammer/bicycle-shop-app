@@ -419,10 +419,24 @@ export function BikeBookingModule({ db, setDb, perms, currentUser }) {
       </div>
 
       {filteredBookings.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <CalendarCheck size={48} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500 font-medium">No bookings {filter !== "all" ? `with status "${BOOKING_STATUSES[filter]?.label}"` : "yet"}</p>
-          <p className="text-sm text-gray-400 mt-1">Create a new booking to get started.</p>
+        <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
+            <CalendarCheck size={28} className="text-blue-400" />
+          </div>
+          <p className="text-gray-700 font-semibold text-lg">
+            {filter !== "all" ? `No ${BOOKING_STATUSES[filter]?.label.toLowerCase()} bookings` : "No bookings yet"}
+          </p>
+          <p className="text-sm text-gray-400 mt-1 max-w-xs mx-auto">
+            {filter !== "all"
+              ? "Try selecting a different status filter above."
+              : "Reserve a bike for a guest by starting the booking wizard."}
+          </p>
+          {filter === "all" && perms.bookingsManage && (
+            <button onClick={() => setShowWizard(true)}
+              className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-sm">
+              <Plus size={16} /> New Booking
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

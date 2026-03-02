@@ -142,8 +142,9 @@ export function ToolsModule({ db, setDb, perms = PERMISSIONS.owner, currentUser 
                     {t.checkedOutBy && <p className="text-xs text-blue-500 mt-0.5">Checked out by: {db.users.find(u => u.id === t.checkedOutBy)?.name || "Unknown"}</p>}
                     {t.notes && <p className="text-xs text-gray-400 mt-0.5 italic">{t.notes}</p>}
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <StatusBadge status={t.condition} />
+                    <span className="w-px h-5 bg-gray-200 mx-1" />
                     {perms.toolsCheckout && (
                       t.currentPropertyId
                         ? <Button variant="ghost" size="sm" onClick={() => returnTool(t.id)} title="Return to Workshop"><RotateCcw size={14} className="text-green-600" /></Button>

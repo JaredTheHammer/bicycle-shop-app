@@ -48,7 +48,7 @@ export function ClientsModule({ db, setDb, perms = PERMISSIONS.owner }) {
                 <p className="text-sm text-gray-500 mt-0.5">{c.email} {c.phone && `| ${c.phone}`}</p>
                 {c.address && <p className="text-sm text-gray-500">{c.address}</p>}
                 {c.notes && <p className="text-sm text-gray-400 mt-1 italic">{c.notes}</p>}
-                <div className="flex gap-2 mt-2"><Badge color="blue">{bikeCountForClient(c.id)} bike{bikeCountForClient(c.id) !== 1 ? "s" : ""}</Badge><Badge color="gray">Since {c.createdAt}</Badge></div>
+                <div className="flex gap-2 mt-2"><Badge color="blue">{bikeCountForClient(c.id)} bike{bikeCountForClient(c.id) !== 1 ? "s" : ""}</Badge><Badge color="gray">Since {c.createdAt ? new Date(c.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—"}</Badge></div>
               </div>
               {perms.clientsEdit && <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => { setEditing(c); setShowForm(true); }}><Edit2 size={14} /></Button>
