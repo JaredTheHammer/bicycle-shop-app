@@ -30,7 +30,23 @@ export function ClientsModule({ db, setDb, perms = PERMISSIONS.owner }) {
 
   async function deleteClient(id) {
     const client = db.clients.find(c => c.id === id);
-    if (!await confirm(`Delete "${client?.name}" and unlink their bicycles?`, { title: "Delete client?", variant: "danger" })) return;
+    // Referential integrity: check for active work orders
+    const activeWOs = (db.workOrders || []).filter(wo => wo.clientId === id && wo.status !== "resolved");
+    if (activeWOs.length > 0) {
+      toast.error(`Cannot delete "${client?.name}" — ${activeWOs.length} active work order${activeWOs.length > 1 ? "s" : ""} linked. Resolve them first.`);
+      return;
+    }
+    // Check for active bookings
+    const activeBookings = (db.bookings || []).filter(bk => bk.clientId === id && !["returned", "cancelled"].includes(bk.status));
+    if (activeBookings.length > 0) {
+      toast.error(`Cannot delete "${client?.name}" — ${activeBookings.length} active booking${activeBookings.length > 1 ? "s" : ""} linked. Complete or cancel them first.`);
+      return;
+    }
+    const bikeCount = bikeCountForClient(id);
+    const msg = bikeCount > 0
+      ? `Delete "${client?.name}" and unlink their ${bikeCount} bicycle${bikeCount > 1 ? "s" : ""}?`
+      : `Delete "${client?.name}"?`;
+    if (!await confirm(msg, { title: "Delete client?", variant: "danger" })) return;
     const updated = { ...db, clients: db.clients.filter(c => c.id !== id) };
     setDb(updated); saveDB(updated);
     toast.success("Client deleted");
@@ -74,19 +90,36 @@ export function ClientsModule({ db, setDb, perms = PERMISSIONS.owner }) {
 
 export function ClientForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(initial);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [errors, setErrors] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); if (submitted) setErrors(e => ({ ...e, [k]: undefined })); };
+
+  function validate() {
+    const errs = {};
+    if (!form.name?.trim()) errs.name = "Name is required";
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Invalid email format";
+    return errs;
+  }
+
+  function handleSave() {
+    setSubmitted(true);
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    onSave(form);
+  }
+
   return (
     <div className="space-y-4">
-      <Input label="Name" value={form.name} onChange={e => set("name", e.target.value)} required />
+      <Input label="Name" value={form.name} onChange={e => set("name", e.target.value)} required error={errors.name} />
       <div className="grid grid-cols-2 gap-4">
-        <Input label="Email" type="email" value={form.email} onChange={e => set("email", e.target.value)} />
+        <Input label="Email" type="email" value={form.email} onChange={e => set("email", e.target.value)} error={errors.email} />
         <Input label="Phone" value={form.phone} onChange={e => set("phone", e.target.value)} />
       </div>
       <Input label="Address" value={form.address} onChange={e => set("address", e.target.value)} />
       <TextArea label="Notes" value={form.notes} onChange={e => set("notes", e.target.value)} />
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button onClick={() => onSave(form)} disabled={!form.name}><Save size={16} /> Save</Button>
+        <Button onClick={handleSave}><Save size={16} /> Save</Button>
       </div>
     </div>
   );

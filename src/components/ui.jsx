@@ -47,26 +47,32 @@ export const StatCard = ({ icon: Icon, label, value, sub, color = "blue" }) => {
 };
 
 // ─── Form Controls ──────────────────────────────────────────────────
-export const Input = ({ label, ...props }) => (
+export const Input = ({ label, error, helperText, required, className = "", ...props }) => (
   <div>
-    {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
-    <input className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" {...props} />
+    {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>}
+    <input className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${error ? "border-red-400 focus:ring-red-500 focus:border-red-500" : "border-gray-300"} ${className}`} required={required} aria-invalid={error ? "true" : undefined} {...props} />
+    {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    {!error && helperText && <p className="mt-1 text-xs text-gray-400">{helperText}</p>}
   </div>
 );
 
-export const TextArea = ({ label, ...props }) => (
+export const TextArea = ({ label, error, helperText, required, className = "", ...props }) => (
   <div>
-    {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
-    <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" rows={3} {...props} />
+    {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>}
+    <textarea className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${error ? "border-red-400 focus:ring-red-500 focus:border-red-500" : "border-gray-300"} ${className}`} rows={3} required={required} aria-invalid={error ? "true" : undefined} {...props} />
+    {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    {!error && helperText && <p className="mt-1 text-xs text-gray-400">{helperText}</p>}
   </div>
 );
 
-export const Select = ({ label, options, ...props }) => (
+export const Select = ({ label, options, error, helperText, required, className = "", ...props }) => (
   <div>
-    {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
-    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white" {...props}>
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>}
+    <select className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white ${error ? "border-red-400 focus:ring-red-500 focus:border-red-500" : "border-gray-300"} ${className}`} required={required} aria-invalid={error ? "true" : undefined} {...props}>
+      {options.map(o => <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>)}
     </select>
+    {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    {!error && helperText && <p className="mt-1 text-xs text-gray-400">{helperText}</p>}
   </div>
 );
 

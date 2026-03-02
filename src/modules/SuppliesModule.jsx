@@ -114,24 +114,38 @@ export function SuppliesModule({ db, setDb, perms = PERMISSIONS.owner }) {
 
 function SupplyForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState({ ...initial });
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [errors, setErrors] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); if (submitted) setErrors(e => ({ ...e, [k]: undefined })); };
+
+  function validate() {
+    const errs = {};
+    if (!form.name?.trim()) errs.name = "Supply name is required";
+    if (parseFloat(form.unitCost) < 0) errs.unitCost = "Cannot be negative";
+    if (parseInt(form.currentStock) < 0) errs.currentStock = "Cannot be negative";
+    if (parseInt(form.reorderThreshold) < 0) errs.reorderThreshold = "Cannot be negative";
+    return errs;
+  }
 
   function handleSave() {
+    setSubmitted(true);
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     onSave({ ...form, unitCost: parseFloat(form.unitCost) || 0, currentStock: parseInt(form.currentStock) || 0, reorderThreshold: parseInt(form.reorderThreshold) || 1 });
   }
 
   return (
     <div className="space-y-4">
-      <Input label="Name" value={form.name} onChange={e => set("name", e.target.value)} />
+      <Input label="Name" value={form.name} onChange={e => set("name", e.target.value)} required error={errors.name} />
       <div className="grid grid-cols-3 gap-4">
         <Select label="Category" value={form.category} onChange={e => set("category", e.target.value)}
           options={SUPPLY_CATEGORIES.filter(c => c !== "All").map(c => ({ value: c, label: c }))} />
         <Input label="Unit" value={form.unit} onChange={e => set("unit", e.target.value)} placeholder="e.g. bottles, cans" />
-        <Input label="Unit Cost ($)" type="number" step="0.01" value={form.unitCost} onChange={e => set("unitCost", e.target.value)} />
+        <Input label="Unit Cost ($)" type="number" step="0.01" value={form.unitCost} onChange={e => set("unitCost", e.target.value)} error={errors.unitCost} />
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <Input label="Current Stock" type="number" value={form.currentStock} onChange={e => set("currentStock", e.target.value)} />
-        <Input label="Reorder Threshold" type="number" value={form.reorderThreshold} onChange={e => set("reorderThreshold", e.target.value)} />
+        <Input label="Current Stock" type="number" value={form.currentStock} onChange={e => set("currentStock", e.target.value)} error={errors.currentStock} />
+        <Input label="Reorder Threshold" type="number" value={form.reorderThreshold} onChange={e => set("reorderThreshold", e.target.value)} error={errors.reorderThreshold} />
         <Input label="Location" value={form.location || ""} onChange={e => set("location", e.target.value)} />
       </div>
       <Input label="Compatible With" value={form.compatibleWith || ""} onChange={e => set("compatibleWith", e.target.value)} placeholder="e.g. Shimano, Magura, All" />
@@ -139,7 +153,7 @@ function SupplyForm({ initial, onSave, onCancel }) {
       <TextArea label="Notes" value={form.notes || ""} onChange={e => set("notes", e.target.value)} />
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button onClick={handleSave} disabled={!form.name}><Save size={16} /> Save</Button>
+        <Button onClick={handleSave}><Save size={16} /> Save</Button>
       </div>
     </div>
   );

@@ -42,7 +42,24 @@ export function BicyclesModule({ db, setDb, perms = PERMISSIONS.owner, currentUs
 
   async function deleteBike(id) {
     const bike = db.bicycles.find(b => b.id === id);
-    if (!await confirm(`Delete "${bike?.nickname || bike?.make + ' ' + bike?.model}" and its maintenance records?`, { title: "Delete bicycle?", variant: "danger" })) return;
+    const label = bike?.nickname || `${bike?.make} ${bike?.model}`;
+    // Referential integrity: check for active work orders
+    const activeWOs = (db.workOrders || []).filter(wo => wo.bicycleId === id && wo.status !== "resolved");
+    if (activeWOs.length > 0) {
+      toast.error(`Cannot delete "${label}" — ${activeWOs.length} active work order${activeWOs.length > 1 ? "s" : ""} linked. Resolve them first.`);
+      return;
+    }
+    // Check for active bookings
+    const activeBookings = (db.bookings || []).filter(bk => bk.bicycleId === id && !["returned", "cancelled"].includes(bk.status));
+    if (activeBookings.length > 0) {
+      toast.error(`Cannot delete "${label}" — ${activeBookings.length} active booking${activeBookings.length > 1 ? "s" : ""} linked. Complete or cancel them first.`);
+      return;
+    }
+    const maintCount = db.maintenance.filter(m => m.bicycleId === id).length;
+    const msg = maintCount > 0
+      ? `Delete "${label}" and its ${maintCount} maintenance record${maintCount > 1 ? "s" : ""}?`
+      : `Delete "${label}"?`;
+    if (!await confirm(msg, { title: "Delete bicycle?", variant: "danger" })) return;
     const updated = { ...db, bicycles: db.bicycles.filter(b => b.id !== id), maintenance: db.maintenance.filter(m => m.bicycleId !== id) };
     setDb(updated); saveDB(updated); setSelected(null);
     toast.success("Bicycle deleted");
@@ -226,21 +243,40 @@ export function BicyclesModule({ db, setDb, perms = PERMISSIONS.owner, currentUs
 
 export function BikeForm({ initial, clients, onSave, onCancel }) {
   const [form, setForm] = useState(initial);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [errors, setErrors] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); if (submitted) setErrors(e => ({ ...e, [k]: undefined })); };
   const setComp = (k, v) => setForm(f => ({ ...f, components: { ...f.components, [k]: v } }));
   const types = ["Road", "Mountain", "Hybrid", "Gravel", "Track", "BMX", "Touring", "E-Bike", "E-Dirt Bike", "Cruiser", "Fat Bike", "Cyclocross", "Triathlon", "Tandem", "Folding", "Other"];
   const materials = ["Aluminum", "Carbon", "Steel", "Titanium", "Carbon CC", "Chromoly", "Other"];
   const conditions = ["Excellent", "Good", "Fair", "Poor"];
+
+  function validate() {
+    const errs = {};
+    if (!form.make?.trim()) errs.make = "Make is required";
+    if (!form.model?.trim()) errs.model = "Model is required";
+    if (!form.clientId) errs.clientId = "Please select a client";
+    if (form.year && (form.year < 1900 || form.year > new Date().getFullYear() + 1)) errs.year = "Invalid year";
+    return errs;
+  }
+
+  function handleSave() {
+    setSubmitted(true);
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    onSave(form);
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
-        <Select label="Client" value={form.clientId} onChange={e => set("clientId", e.target.value)} options={[{ value: "", label: "-- Select --" }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
+        <Select label="Client" value={form.clientId} onChange={e => set("clientId", e.target.value)} options={[{ value: "", label: "-- Select --" }, ...clients.map(c => ({ value: c.id, label: c.name }))]} required error={errors.clientId} />
         <Input label="Nickname" value={form.nickname} onChange={e => set("nickname", e.target.value)} placeholder="e.g. The Commuter" />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Input label="Make" value={form.make} onChange={e => set("make", e.target.value)} required />
-        <Input label="Model" value={form.model} onChange={e => set("model", e.target.value)} required />
-        <Input label="Year" type="number" value={form.year} onChange={e => set("year", parseInt(e.target.value))} />
+        <Input label="Make" value={form.make} onChange={e => set("make", e.target.value)} required error={errors.make} />
+        <Input label="Model" value={form.model} onChange={e => set("model", e.target.value)} required error={errors.model} />
+        <Input label="Year" type="number" value={form.year} onChange={e => set("year", parseInt(e.target.value))} error={errors.year} />
         <Input label="Serial Number" value={form.serial} onChange={e => set("serial", e.target.value)} />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -294,7 +330,7 @@ export function BikeForm({ initial, clients, onSave, onCancel }) {
       <TextArea label="Notes" value={form.notes} onChange={e => set("notes", e.target.value)} />
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button onClick={() => onSave(form)} disabled={!form.make || !form.model}><Save size={16} /> Save Bicycle</Button>
+        <Button onClick={handleSave}><Save size={16} /> Save Bicycle</Button>
       </div>
     </div>
   );
