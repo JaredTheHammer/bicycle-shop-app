@@ -420,7 +420,9 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
 function WOForm({ initial, db, onSave, onCancel }) {
   const confirm = useConfirm();
   const [form, setForm] = useState({ ...initial });
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [errors, setErrors] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); if (submitted) setErrors(e => ({ ...e, [k]: undefined })); };
 
   const selectedBike = db.bicycles.find(b => b.id === form.bicycleId);
   const hasChecklist = form.checklist && form.checklist.length > 0;
@@ -445,13 +447,23 @@ function WOForm({ initial, db, onSave, onCancel }) {
     handleGenerateChecklist();
   }
 
+  function validate() {
+    const errs = {};
+    if (!form.bicycleId) errs.bicycleId = "Please select a bicycle";
+    if (form.laborHours < 0) errs.laborHours = "Cannot be negative";
+    return errs;
+  }
+
   function handleSave() {
+    setSubmitted(true);
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     onSave({ ...form });
   }
 
   return (
     <div className="space-y-4">
-      <Select label="Bicycle" value={form.bicycleId} onChange={e => handleBikeChange(e.target.value)}
+      <Select label="Bicycle" value={form.bicycleId} onChange={e => { handleBikeChange(e.target.value); if (submitted) setErrors(e2 => ({ ...e2, bicycleId: undefined })); }} required error={errors.bicycleId}
         options={[{ value: "", label: "-- Select --" }, ...db.bicycles.map(b => {
           const cl = db.clients.find(c => c.id === b.clientId);
           return { value: b.id, label: `${b.nickname ? b.nickname + " - " : ""}${b.make} ${b.model} (${cl?.name || "Unassigned"})` };
@@ -473,7 +485,7 @@ function WOForm({ initial, db, onSave, onCancel }) {
       <div className="grid grid-cols-3 gap-4">
         <Input label="Scheduled Date" type="date" value={form.scheduledDate || ""} onChange={e => set("scheduledDate", e.target.value)} />
         <Input label="Started Date" type="date" value={form.startedDate || ""} onChange={e => set("startedDate", e.target.value)} />
-        <Input label="Labor Hours" type="number" step="0.25" value={form.laborHours || 0} onChange={e => set("laborHours", parseFloat(e.target.value) || 0)} />
+        <Input label="Labor Hours" type="number" step="0.25" value={form.laborHours || 0} onChange={e => set("laborHours", parseFloat(e.target.value) || 0)} error={errors.laborHours} />
       </div>
       <Input label="Location" value={form.location || ""} onChange={e => set("location", e.target.value)} />
       <TextArea label="Description" value={form.description} onChange={e => set("description", e.target.value)} />
@@ -511,7 +523,7 @@ function WOForm({ initial, db, onSave, onCancel }) {
 
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button onClick={handleSave} disabled={!form.bicycleId}><Save size={16} /> Save</Button>
+        <Button onClick={handleSave}><Save size={16} /> Save</Button>
       </div>
     </div>
   );

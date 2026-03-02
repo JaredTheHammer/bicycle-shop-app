@@ -150,9 +150,23 @@ export function PartsModule({ db, setDb, perms = PERMISSIONS.owner }) {
 
 function PartForm({ initial, bicycles, parts, onSave, onCancel }) {
   const [form, setForm] = useState({ ...initial, compatBikeStr: (initial.compatibleBikeIds || []).join(","), altPartStr: (initial.alternativePartIds || []).join(",") });
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [errors, setErrors] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); if (submitted) setErrors(e => ({ ...e, [k]: undefined })); };
+
+  function validate() {
+    const errs = {};
+    if (!form.name?.trim()) errs.name = "Part name is required";
+    if (parseFloat(form.unitCost) < 0) errs.unitCost = "Cannot be negative";
+    if (parseInt(form.currentStock) < 0) errs.currentStock = "Cannot be negative";
+    if (parseInt(form.reorderThreshold) < 0) errs.reorderThreshold = "Cannot be negative";
+    return errs;
+  }
 
   function handleSave() {
+    setSubmitted(true);
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     const { compatBikeStr, altPartStr, ...rest } = form;
     onSave({
       ...rest,
@@ -168,18 +182,18 @@ function PartForm({ initial, bicycles, parts, onSave, onCancel }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <Input label="Part Name" value={form.name} onChange={e => set("name", e.target.value)} />
+        <Input label="Part Name" value={form.name} onChange={e => set("name", e.target.value)} required error={errors.name} />
         <Input label="SKU" value={form.sku || ""} onChange={e => set("sku", e.target.value)} />
       </div>
       <div className="grid grid-cols-3 gap-4">
         <Select label="Category" value={form.category} onChange={e => set("category", e.target.value)}
           options={PART_CATEGORIES.filter(c => c !== "All").map(c => ({ value: c, label: c }))} />
-        <Input label="Unit Cost ($)" type="number" step="0.01" value={form.unitCost} onChange={e => set("unitCost", e.target.value)} />
+        <Input label="Unit Cost ($)" type="number" step="0.01" value={form.unitCost} onChange={e => set("unitCost", e.target.value)} error={errors.unitCost} />
         <Input label="Supplier" value={form.supplier || ""} onChange={e => set("supplier", e.target.value)} />
       </div>
       <div className="grid grid-cols-4 gap-4">
-        <Input label="Current Stock" type="number" value={form.currentStock} onChange={e => set("currentStock", e.target.value)} />
-        <Input label="Reorder Threshold" type="number" value={form.reorderThreshold} onChange={e => set("reorderThreshold", e.target.value)} />
+        <Input label="Current Stock" type="number" value={form.currentStock} onChange={e => set("currentStock", e.target.value)} error={errors.currentStock} />
+        <Input label="Reorder Threshold" type="number" value={form.reorderThreshold} onChange={e => set("reorderThreshold", e.target.value)} error={errors.reorderThreshold} />
         <Input label="Lead Time (days)" type="number" value={form.leadTimeDays} onChange={e => set("leadTimeDays", e.target.value)} />
         <Select label="Fluid Type" value={form.fluidType || ""} onChange={e => set("fluidType", e.target.value || null)}
           options={[{ value: "", label: "N/A" }, { value: "mineral_oil", label: "Mineral Oil" }, { value: "dot", label: "DOT" }]} />
@@ -205,7 +219,7 @@ function PartForm({ initial, bicycles, parts, onSave, onCancel }) {
       <TextArea label="Notes" value={form.notes || ""} onChange={e => set("notes", e.target.value)} />
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button onClick={handleSave} disabled={!form.name}><Save size={16} /> Save</Button>
+        <Button onClick={handleSave}><Save size={16} /> Save</Button>
       </div>
     </div>
   );

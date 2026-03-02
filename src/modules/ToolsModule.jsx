@@ -54,6 +54,12 @@ export function ToolsModule({ db, setDb, perms = PERMISSIONS.owner, currentUser 
 
   async function deleteTool(id) {
     const tool = db.tools.find(t => t.id === id);
+    // Referential integrity: block delete if tool is checked out to a property
+    if (tool?.currentPropertyId) {
+      const propertyLabel = getToolPropertyLabel(tool.currentPropertyId, db.clients);
+      toast.error(`Cannot delete "${tool.name}" — currently checked out to ${propertyLabel}. Return it first.`);
+      return;
+    }
     if (!await confirm(`Delete "${tool?.name || "this tool"}"?`, { title: "Delete tool?", variant: "danger" })) return;
     const updated = { ...db, tools: db.tools.filter(t => t.id !== id) };
     setDb(updated); saveDB(updated);
@@ -340,24 +346,42 @@ export function ToolLocationLogView({ db }) {
 
 export function ToolForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(initial);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [errors, setErrors] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); if (submitted) setErrors(e => ({ ...e, [k]: undefined })); };
+
+  function validate() {
+    const errs = {};
+    if (!form.name?.trim()) errs.name = "Tool name is required";
+    if (form.quantity < 1) errs.quantity = "Must be at least 1";
+    if (form.cost < 0) errs.cost = "Cannot be negative";
+    return errs;
+  }
+
+  function handleSave() {
+    setSubmitted(true);
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    onSave(form);
+  }
+
   return (
     <div className="space-y-4">
-      <Input label="Tool Name" value={form.name} onChange={e => set("name", e.target.value)} required />
+      <Input label="Tool Name" value={form.name} onChange={e => set("name", e.target.value)} required error={errors.name} />
       <div className="grid grid-cols-2 gap-4">
         <Input label="Category" value={form.category} onChange={e => set("category", e.target.value)} placeholder="e.g. Wheels, Brakes, Torque" />
         <Select label="Condition" value={form.condition} onChange={e => set("condition", e.target.value)} options={["Excellent","Good","Fair","Poor"].map(c => ({ value: c, label: c }))} />
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <Input label="Quantity" type="number" min="1" value={form.quantity} onChange={e => set("quantity", parseInt(e.target.value) || 1)} />
-        <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => set("cost", parseFloat(e.target.value) || 0)} />
+        <Input label="Quantity" type="number" min="1" value={form.quantity} onChange={e => set("quantity", parseInt(e.target.value) || 1)} error={errors.quantity} />
+        <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => set("cost", parseFloat(e.target.value) || 0)} error={errors.cost} />
         <Input label="Purchase Date" type="date" value={form.purchaseDate} onChange={e => set("purchaseDate", e.target.value)} />
       </div>
       <Input label="Storage Location" value={form.location} onChange={e => set("location", e.target.value)} placeholder="e.g. Workbench A, Tool Wall" />
       <TextArea label="Notes" value={form.notes} onChange={e => set("notes", e.target.value)} />
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button onClick={() => onSave(form)} disabled={!form.name}><Save size={16} /> Save</Button>
+        <Button onClick={handleSave}><Save size={16} /> Save</Button>
       </div>
     </div>
   );

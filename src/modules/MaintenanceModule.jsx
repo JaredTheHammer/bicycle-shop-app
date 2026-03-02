@@ -211,14 +211,28 @@ export function MaintenanceModule({ db, setDb }) {
 export function MaintForm({ initial, bicycles, clients, onSave, onCancel }) {
   const confirm = useConfirm();
   const [form, setForm] = useState({ ...initial, partsStr: (initial.parts || []).join(", ") });
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [errors, setErrors] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); if (submitted) setErrors(e => ({ ...e, [k]: undefined })); };
   const types = ["Tune-Up", "Chain Replacement", "Brake Service", "Wheel Truing", "Suspension Service", "Drivetrain Overhaul", "Bearing Service", "Cable Replacement", "Tire Replacement", "Full Overhaul", "Safety Inspection", "Fitting", "Custom Build", "Other"];
 
   const selectedBike = bicycles.find(b => b.id === form.bicycleId);
   const hasChecklist = form.checklist && form.checklist.length > 0;
   const clStats = hasChecklist ? checklistStats(form.checklist) : null;
 
+  function validate() {
+    const errs = {};
+    if (!form.bicycleId) errs.bicycleId = "Please select a bicycle";
+    if (!form.type) errs.type = "Please select a service type";
+    if (!form.scheduledDate) errs.scheduledDate = "Scheduled date is required";
+    if (form.cost < 0) errs.cost = "Cannot be negative";
+    return errs;
+  }
+
   function handleSave() {
+    setSubmitted(true);
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     const { partsStr, ...rest } = form;
     onSave({ ...rest, parts: partsStr.split(",").map(p => p.trim()).filter(Boolean) });
   }
@@ -236,19 +250,19 @@ export function MaintForm({ initial, bicycles, clients, onSave, onCancel }) {
 
   return (
     <div className="space-y-4">
-      <Select label="Bicycle" value={form.bicycleId} onChange={e => set("bicycleId", e.target.value)}
+      <Select label="Bicycle" value={form.bicycleId} onChange={e => set("bicycleId", e.target.value)} required error={errors.bicycleId}
         options={[{ value: "", label: "-- Select --" }, ...bicycles.map(b => {
           const cl = clients.find(c => c.id === b.clientId);
           return { value: b.id, label: `${b.nickname ? b.nickname + " - " : ""}${b.make} ${b.model} (${cl?.name || "Unassigned"})` };
         })]} />
       <div className="grid grid-cols-2 gap-4">
-        <Select label="Service Type" value={form.type} onChange={e => set("type", e.target.value)} options={[{ value: "", label: "-- Select --" }, ...types.map(t => ({ value: t, label: t }))]} />
+        <Select label="Service Type" value={form.type} onChange={e => set("type", e.target.value)} required error={errors.type} options={[{ value: "", label: "-- Select --" }, ...types.map(t => ({ value: t, label: t }))]} />
         <Select label="Status" value={form.status} onChange={e => set("status", e.target.value)} options={[{ value: "scheduled", label: "Scheduled" }, { value: "in-progress", label: "In Progress" }, { value: "completed", label: "Completed" }]} />
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <Input label="Scheduled Date" type="date" value={form.scheduledDate} onChange={e => set("scheduledDate", e.target.value)} />
+        <Input label="Scheduled Date" type="date" value={form.scheduledDate} onChange={e => set("scheduledDate", e.target.value)} required error={errors.scheduledDate} />
         <Input label="Completed Date" type="date" value={form.completedDate || ""} onChange={e => set("completedDate", e.target.value)} />
-        <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => set("cost", parseFloat(e.target.value) || 0)} />
+        <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => set("cost", parseFloat(e.target.value) || 0)} error={errors.cost} />
       </div>
       <Input label="Technician" value={form.technician} onChange={e => set("technician", e.target.value)} />
       <TextArea label="Description" value={form.description} onChange={e => set("description", e.target.value)} />
@@ -295,7 +309,7 @@ export function MaintForm({ initial, bicycles, clients, onSave, onCancel }) {
 
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button onClick={handleSave} disabled={!form.bicycleId || !form.type}><Save size={16} /> Save</Button>
+        <Button onClick={handleSave}><Save size={16} /> Save</Button>
       </div>
     </div>
   );
