@@ -312,29 +312,38 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
                   return (
                     <div key={wo.id} className={`bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 ${statusDef.bgCard} cursor-pointer hover:shadow-md transition-shadow`} onClick={() => setSelectedWO(wo.id)}>
                       <div className="p-3">
-                        <div className="flex items-start justify-between gap-1 mb-1.5">
-                          <p className="text-sm font-medium text-gray-900 leading-tight">{bike?.nickname || "Unknown"}</p>
+                        {/* Header: bike name + priority */}
+                        <div className="flex items-start justify-between gap-1 mb-2">
+                          <p className="text-sm font-semibold text-gray-900 leading-snug">{bike?.nickname || "Unknown"}</p>
                           <Badge color={priDef.color}>{priDef.label[0]}</Badge>
                         </div>
-                        <p className="text-xs text-gray-500 mb-1">{WO_TYPES.find(t => t.value === wo.type)?.label || wo.type} - {wo.category}</p>
-                        {client && <p className="text-xs text-gray-400">{client.name}</p>}
-                        {tech && <p className="text-xs text-gray-400 flex items-center gap-1"><User size={10} />{tech.name}</p>}
-                        {wo.scheduledDate && <p className="text-xs text-gray-400 flex items-center gap-1"><Clock size={10} />{wo.scheduledDate}</p>}
+                        {/* Type tag */}
+                        <span className="inline-block text-[10px] font-medium uppercase tracking-wide text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded mb-2">
+                          {WO_TYPES.find(t => t.value === wo.type)?.label || wo.type}
+                        </span>
+                        {/* Meta lines */}
+                        <div className="space-y-0.5">
+                          {client && <p className="text-xs text-gray-500">{client.name}</p>}
+                          {tech && <p className="text-xs text-gray-500 flex items-center gap-1"><User size={10} className="text-gray-400" />{tech.name}</p>}
+                          {wo.scheduledDate && <p className="text-xs text-gray-500 flex items-center gap-1"><Clock size={10} className="text-gray-400" />{wo.scheduledDate}</p>}
+                        </div>
+                        {/* Checklist progress */}
                         {clStats && clStats.total > 0 && (
-                          <div className="mt-2">
+                          <div className="mt-2.5 pt-2 border-t border-gray-100">
                             <div className="w-full bg-gray-100 rounded-full h-1.5">
                               <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${clStats.pct}%` }}></div>
                             </div>
-                            <p className="text-[10px] text-gray-400 mt-0.5">{Math.round(clStats.pct)}% complete</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{Math.round(clStats.pct)}% checked</p>
                           </div>
                         )}
+                        {/* Parts indicator */}
                         {wo.partsRequested?.length > 0 && (
-                          <div className="flex items-center gap-1 mt-1.5"><Package size={10} className="text-orange-400" /><span className="text-[10px] text-orange-500">{wo.partsRequested.length} part{wo.partsRequested.length > 1 ? "s" : ""} requested</span></div>
+                          <div className="flex items-center gap-1 mt-2"><Package size={10} className="text-orange-400" /><span className="text-[10px] text-orange-500 font-medium">{wo.partsRequested.length} part{wo.partsRequested.length > 1 ? "s" : ""} needed</span></div>
                         )}
                         {/* Quick move button */}
                         {nextStatus && (
                           <button onClick={(e) => { e.stopPropagation(); moveWO(wo.id, nextStatus.key); }}
-                            className="mt-2 w-full flex items-center justify-center gap-1 text-[11px] font-medium text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded py-1 transition-colors" title={`Move to ${nextStatus.label}`}>
+                            className="mt-2.5 w-full flex items-center justify-center gap-1 text-[11px] font-medium text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md py-1.5 border border-transparent hover:border-blue-100 transition-colors" title={`Move to ${nextStatus.label}`}>
                             <MoveRight size={12} /> {nextStatus.label}
                           </button>
                         )}

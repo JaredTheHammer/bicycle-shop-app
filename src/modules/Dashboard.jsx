@@ -44,7 +44,7 @@ export function Dashboard({ db }) {
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-sm text-gray-500 mt-1">Lānaʻi Estate Stewardship - Bicycle Program</p>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <StatCard icon={Bike} label="Bicycles" value={totalBikes} color="blue" />
         <StatCard icon={Users} label="Properties" value={totalClients} color="purple" />
         <StatCard icon={Calendar} label="Active WOs" value={scheduledMaint} sub="work orders open" color="yellow" />
@@ -80,20 +80,19 @@ export function Dashboard({ db }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           {sortedFleet.map(({ bike, client, pm }) => {
-            const borderColor = pm.status === "red" ? "border-red-300 bg-red-50/50" : pm.status === "yellow" ? "border-yellow-300 bg-yellow-50/50" : "border-green-200 bg-green-50/30";
+            const borderColor = pm.status === "red" ? "border-red-300 bg-red-50/40" : pm.status === "yellow" ? "border-yellow-300 bg-yellow-50/40" : "border-green-200 bg-green-50/30";
             const dotColor = pm.status === "red" ? "bg-red-500" : pm.status === "yellow" ? "bg-yellow-500" : "bg-green-500";
             return (
               <div key={bike.id} className={`border rounded-lg p-3 ${borderColor}`}>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColor}`} />
-                  <span className="text-sm font-semibold text-gray-900 truncate">
+                <div className="flex items-start gap-2 mb-1">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1 ${dotColor}`} />
+                  <span className="text-sm font-semibold text-gray-900 leading-snug">
                     {bike.nickname || `${bike.make} ${bike.model}`}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mb-1">{bike.type} | {client?.name || "---"}</p>
-                <p className="text-xs text-gray-600">{pm.reason}</p>
+                <p className="text-xs text-gray-500">{bike.type} | {client?.name || "---"}</p>
                 {pm.daysSinceService !== null && (
-                  <p className="text-xs text-gray-400 mt-0.5">{pm.daysSinceService}d since service | {pm.rideDaysSinceLastPM} ride-days</p>
+                  <p className="text-xs text-gray-400 mt-1">{pm.daysSinceService}d since service | {pm.rideDaysSinceLastPM} ride-days</p>
                 )}
                 {pm.nextDueDate && pm.status !== "green" && (
                   <p className="text-xs text-gray-400">Due: {pm.nextDueDate}</p>

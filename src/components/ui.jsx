@@ -28,15 +28,15 @@ export const Card = ({ children, className = "", onClick }) => (
 );
 
 export const StatCard = ({ icon: Icon, label, value, sub, color = "blue" }) => {
-  const bgMap = { blue: "bg-blue-50 text-blue-600", green: "bg-green-50 text-green-600", yellow: "bg-yellow-50 text-yellow-600", red: "bg-red-50 text-red-600", purple: "bg-purple-50 text-purple-600", orange: "bg-orange-50 text-orange-600" };
+  const bgMap = { blue: "bg-blue-50 text-blue-600", green: "bg-green-50 text-green-600", yellow: "bg-yellow-50 text-yellow-600", red: "bg-red-50 text-red-600", purple: "bg-purple-50 text-purple-600", orange: "bg-orange-50 text-orange-600", teal: "bg-teal-50 text-teal-600" };
   return (
-    <Card className="p-5">
+    <Card className="p-4">
       <div className="flex items-center gap-3">
-        <div className={`p-2.5 rounded-lg ${bgMap[color]}`}><Icon size={20} /></div>
-        <div>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <div className={`p-2 rounded-lg ${bgMap[color]}`}><Icon size={18} /></div>
+        <div className="min-w-0">
+          <p className="text-xl font-bold text-gray-900 leading-tight">{value}</p>
           <p className="text-sm text-gray-500">{label}</p>
-          {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+          {sub && <p className="text-xs text-gray-400 mt-0.5 truncate">{sub}</p>}
         </div>
       </div>
     </Card>
@@ -95,9 +95,9 @@ export const Modal = ({ open, onClose, title, children, wide }) => {
 };
 
 export const EmptyState = ({ icon: Icon, title, description, action }) => (
-  <div className="text-center py-12 px-4">
-    <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4"><Icon size={24} className="text-gray-400" /></div>
-    <h3 className="text-sm font-medium text-gray-900">{title}</h3>
+  <div className="text-center py-14 px-4">
+    <div className="mx-auto w-14 h-14 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-4"><Icon size={24} className="text-gray-400" /></div>
+    <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
     <p className="text-sm text-gray-500 mt-1">{description}</p>
     {action && <div className="mt-4">{action}</div>}
   </div>
