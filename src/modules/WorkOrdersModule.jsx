@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback } from "react";
 import {
   Wrench, Plus, Edit2, Search, ChevronDown, ChevronRight, X, Save, Trash2,
   Filter, ArrowLeft, Clock, CheckCircle, AlertTriangle, MoveRight, Star,
-  Columns3, List, Eye, CircleAlert, DollarSign, ArrowRightLeft, Check, ClipboardCheck, Package, User
+  Columns3, List, Eye, CircleAlert, DollarSign, ArrowRightLeft, Check, ClipboardCheck, Package, User,
+  MessageSquare, Send, Activity
 } from "lucide-react";
 import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge, useConfirm, useToast } from "../components/ui.jsx";
 import { ChecklistPanel, ChecklistBadge } from "../components/ChecklistPanel.jsx";
@@ -10,6 +11,12 @@ import { computePmStatus, PmStatusBadge } from "../lib/pm-engine.jsx";
 import { generateChecklist, checklistStats } from "../lib/checklist.js";
 import { genId, saveDB } from "../lib/db.js";
 import { WO_STATUSES, WO_PRIORITIES, WO_TYPES, WO_CATEGORIES, PERMISSIONS, DEFAULT_PM_INTERVAL_DAYS, DEFAULT_PM_INTERVAL_RIDE_DAYS } from "../lib/constants.js";
+import { formatRelativeTime, activityIcon, activityVerb } from "../lib/activity-helpers.js";
+
+/** Create a single activity-log entry */
+function logEntry(userId, action, detail) {
+  return { id: genId(), timestamp: new Date().toISOString(), userId, action, detail };
+}
 
 
 export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, currentUser = null }) {
@@ -42,15 +49,32 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
   function saveWO(wo) {
     const updated = { ...db };
     const now = new Date().toISOString().slice(0, 10);
+    const uid = currentUser?.id || null;
     if (wo.id) {
-      updated.workOrders = updated.workOrders.map(x => x.id === wo.id ? { ...wo, updatedAt: now } : x);
+      // Diff old vs new to determine what changed
+      const old = db.workOrders.find(x => x.id === wo.id);
+      const newLogs = [...(wo.activityLog || [])];
+      if (old) {
+        if (old.status !== wo.status) newLogs.push(logEntry(uid, "status_change", `${old.status} → ${wo.status}`));
+        if (old.assignedTechId !== wo.assignedTechId) {
+          const oldTech = getUser(old.assignedTechId)?.name || "unassigned";
+          const newTech = getUser(wo.assignedTechId)?.name || "unassigned";
+          newLogs.push(logEntry(uid, "tech_reassigned", `${oldTech} → ${newTech}`));
+        }
+        // Fallback: if nothing specific was logged, mark as generic edit
+        if (newLogs.length === (wo.activityLog || []).length) {
+          newLogs.push(logEntry(uid, "edited", "Work order edited"));
+        }
+      }
+      updated.workOrders = updated.workOrders.map(x => x.id === wo.id ? { ...wo, activityLog: newLogs, updatedAt: now } : x);
     } else {
       const bike = db.bicycles.find(b => b.id === wo.bicycleId);
       const bikeType = bike?.type || "Road";
       if (!wo.checklist || wo.checklist.length === 0) {
         wo.checklist = generateChecklist(bikeType);
       }
-      updated.workOrders = [...updated.workOrders, { ...wo, id: genId(), createdAt: now, updatedAt: now }];
+      const initLog = [logEntry(uid, "created", "Work order created")];
+      updated.workOrders = [...updated.workOrders, { ...wo, id: genId(), activityLog: initLog, notes: [], createdAt: now, updatedAt: now }];
     }
     setDb(updated); saveDB(updated); setShowForm(false); setEditing(null);
     toast.success(wo.id ? "Work order updated" : "Work order created");
@@ -60,11 +84,13 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
     const now = new Date().toISOString().slice(0, 10);
     const updated = { ...db };
     const wo = updated.workOrders.find(w => w.id === woId);
+    const uid = currentUser?.id || null;
     updated.workOrders = updated.workOrders.map(w => {
       if (w.id !== woId) return w;
       const changes = { ...w, status: newStatus, updatedAt: now };
       if (newStatus === "in_progress" && !w.startedDate) changes.startedDate = now;
       if (newStatus === "resolved" && !w.completedDate) changes.completedDate = now;
+      changes.activityLog = [...(w.activityLog || []), logEntry(uid, "status_change", `${w.status} → ${newStatus}`)];
       return changes;
     });
     // When resolving a work order, update the linked bike's PM tracking fields
@@ -92,8 +118,39 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
 
   function updateWOChecklist(woId, newChecklist) {
     const updated = { ...db };
-    updated.workOrders = updated.workOrders.map(wo => wo.id === woId ? { ...wo, checklist: newChecklist } : wo);
+    const uid = currentUser?.id || null;
+    updated.workOrders = updated.workOrders.map(wo => {
+      if (wo.id !== woId) return { ...wo };
+      const newStats = checklistStats(newChecklist);
+      const detail = `${newStats.pass}/${newStats.total} items checked`;
+      const log = [...(wo.activityLog || [])];
+      const last = log[log.length - 1];
+      // Dedup: if last entry is a checklist_update by same user within 60s, replace it
+      if (last && last.action === "checklist_update" && last.userId === uid && (Date.now() - new Date(last.timestamp).getTime()) < 60000) {
+        log[log.length - 1] = logEntry(uid, "checklist_update", detail);
+      } else {
+        log.push(logEntry(uid, "checklist_update", detail));
+      }
+      return { ...wo, checklist: newChecklist, activityLog: log };
+    });
     setDb(updated); saveDB(updated);
+  }
+
+  function addNote(woId, text) {
+    if (!text.trim()) return;
+    const uid = currentUser?.id || null;
+    const updated = { ...db };
+    updated.workOrders = updated.workOrders.map(wo => {
+      if (wo.id !== woId) return wo;
+      const note = { id: genId(), timestamp: new Date().toISOString(), userId: uid, text: text.trim() };
+      return {
+        ...wo,
+        notes: [...(wo.notes || []), note],
+        activityLog: [...(wo.activityLog || []), logEntry(uid, "note_added", text.trim().slice(0, 80))],
+      };
+    });
+    setDb(updated); saveDB(updated);
+    toast.success("Note added");
   }
 
   const getBike = (id) => db.bicycles.find(b => b.id === id);
@@ -208,6 +265,9 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
                           updatedTools = updatedTools.map(t => t.id === tid ? { ...t, currentPropertyId: wo.clientId, checkedOutBy: currentUser?.id || null } : t);
                         });
                         const upd = { ...db, tools: updatedTools, toolLocationLog: [...(db.toolLocationLog || []), ...newLogs] };
+                        // Log the tool checkout on the work order
+                        const toolNames = toolsAtWorkshop.map(tid => updatedTools.find(t => t.id === tid)?.name || tid).join(", ");
+                        upd.workOrders = upd.workOrders.map(w => w.id !== wo.id ? w : { ...w, activityLog: [...(w.activityLog || []), logEntry(currentUser?.id || null, "tools_checkout", toolNames)] });
                         setDb(upd); saveDB(upd);
                         toast.success(`${toolsAtWorkshop.length} tool(s) checked out`);
                       }} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
@@ -261,6 +321,75 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
               onChange={(updated) => updateWOChecklist(wo.id, updated)}
               readOnly={wo.status === "resolved"}
             />
+          </Card>
+        </div>
+
+        {/* ── Notes Thread + Activity Timeline ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Notes Thread */}
+          <Card className="p-5">
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <MessageSquare size={18} /> Notes
+              {(wo.notes || []).length > 0 && <span className="text-xs font-normal text-gray-400 ml-auto">{(wo.notes || []).length} note{(wo.notes || []).length !== 1 ? "s" : ""}</span>}
+            </h3>
+            <div className="space-y-3 max-h-80 overflow-y-auto mb-4">
+              {(wo.notes || []).length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No notes yet. {wo.status !== "resolved" ? "Add one below." : ""}</p>
+              ) : (
+                (wo.notes || []).map(note => {
+                  const author = getUser(note.userId);
+                  return (
+                    <div key={note.id} className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">
+                        {(author?.name || "?")[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">{author?.name || "Unknown"}</span>
+                          <span className="text-xs text-gray-400">{formatRelativeTime(note.timestamp)}</span>
+                        </div>
+                        <p className="text-sm text-gray-700 mt-0.5 whitespace-pre-wrap">{note.text}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            {wo.status !== "resolved" && perms.workOrdersEdit && (
+              <NoteInput onSubmit={(text) => addNote(wo.id, text)} />
+            )}
+          </Card>
+
+          {/* Activity Timeline */}
+          <Card className="p-5">
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Activity size={18} /> Activity Log
+            </h3>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {(wo.activityLog || []).length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No activity recorded yet.</p>
+              ) : (
+                [...(wo.activityLog || [])].reverse().map(entry => {
+                  const { Icon, bg, color } = activityIcon(entry.action);
+                  const author = getUser(entry.userId);
+                  return (
+                    <div key={entry.id} className="flex gap-3">
+                      <div className={`w-7 h-7 rounded-full ${bg} ${color} flex items-center justify-center shrink-0`}>
+                        <Icon size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900">
+                          <span className="font-medium">{author?.name || "System"}</span>{" "}
+                          <span className="text-gray-500">{activityVerb(entry.action)}</span>
+                        </p>
+                        {entry.detail && <p className="text-xs text-gray-400 mt-0.5 truncate">{entry.detail}</p>}
+                        <p className="text-xs text-gray-300 mt-0.5">{formatRelativeTime(entry.timestamp)}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </Card>
         </div>
 
@@ -383,6 +512,7 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
     partsUsed: [], partsRequested: [], photos: [], laborHours: 0,
     location: "", toolsRequired: [], toolsVerified: false, managerSignoff: null,
     scheduledDate: "", startedDate: null, completedDate: null,
+    activityLog: [], notes: [],
   };
 
   return (
@@ -576,6 +706,8 @@ export function autoGeneratePMWorkOrders(db) {
       completedDate: null,
       createdAt: today,
       updatedAt: today,
+      activityLog: [{ id: genId(), timestamp: new Date().toISOString(), userId: null, action: "created", detail: "Auto-generated PM work order" }],
+      notes: [],
       _autoGenerated: true
     };
 
@@ -584,5 +716,34 @@ export function autoGeneratePMWorkOrders(db) {
   }
 
   return changed ? updated : db;
+}
+
+// ─── Note Input Sub-component ────────────────────────────────────────
+function NoteInput({ onSubmit }) {
+  const [text, setText] = useState("");
+  function handleSubmit() {
+    if (!text.trim()) return;
+    onSubmit(text);
+    setText("");
+  }
+  return (
+    <div className="flex gap-2">
+      <textarea
+        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+        rows={2}
+        placeholder="Add a note..."
+        value={text}
+        onChange={e => setText(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+      />
+      <button
+        onClick={handleSubmit}
+        disabled={!text.trim()}
+        className="self-end p-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      >
+        <Send size={16} />
+      </button>
+    </div>
+  );
 }
 
