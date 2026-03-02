@@ -42,8 +42,20 @@ export function BicyclesModule({ db, setDb, perms = PERMISSIONS.owner, currentUs
 
   async function deleteBike(id) {
     const bike = db.bicycles.find(b => b.id === id);
-    if (!await confirm(`Delete "${bike?.nickname || bike?.make + ' ' + bike?.model}" and its maintenance records?`, { title: "Delete bicycle?", variant: "danger" })) return;
-    const updated = { ...db, bicycles: db.bicycles.filter(b => b.id !== id), maintenance: db.maintenance.filter(m => m.bicycleId !== id) };
+    const activeWOs = db.workOrders.filter(wo => wo.bicycleId === id && wo.status !== "resolved");
+    if (activeWOs.length > 0) {
+      toast.error(`Cannot delete — ${activeWOs.length} active work order${activeWOs.length !== 1 ? "s" : ""} still reference this bike. Resolve them first.`);
+      return;
+    }
+    const resolvedWOs = db.workOrders.filter(wo => wo.bicycleId === id && wo.status === "resolved");
+    const extra = resolvedWOs.length > 0 ? ` ${resolvedWOs.length} resolved work order${resolvedWOs.length !== 1 ? "s" : ""} will be unlinked.` : "";
+    if (!await confirm(`Delete "${bike?.nickname || bike?.make + ' ' + bike?.model}" and its maintenance records?${extra}`, { title: "Delete bicycle?", variant: "danger" })) return;
+    const updated = {
+      ...db,
+      bicycles: db.bicycles.filter(b => b.id !== id),
+      maintenance: db.maintenance.filter(m => m.bicycleId !== id),
+      workOrders: db.workOrders.map(wo => wo.bicycleId === id ? { ...wo, bicycleId: null } : wo),
+    };
     setDb(updated); saveDB(updated); setSelected(null);
     toast.success("Bicycle deleted");
   }

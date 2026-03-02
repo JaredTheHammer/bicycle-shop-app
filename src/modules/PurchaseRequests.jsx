@@ -14,7 +14,7 @@ const PR_STATUSES = [
   { key: "rejected", label: "Rejected", color: "red" },
 ];
 
-export function PurchaseRequestPanel({ db, setDb, workOrderId }) {
+export function PurchaseRequestPanel({ db, setDb, workOrderId, currentUser = null, perms = null }) {
   // Inline panel rendered inside work order detail view
   const [showAddForm, setShowAddForm] = useState(false);
   const [newPartId, setNewPartId] = useState("");
@@ -38,7 +38,7 @@ export function PurchaseRequestPanel({ db, setDb, workOrderId }) {
     const pr = {
       id: genId(), workOrderId, partId: newPartId, partName: part?.name || "",
       quantity: parseInt(newQty) || 1,
-      requestedBy: "u3", // default to tech
+      requestedBy: currentUser?.id || "u3",
       managerApproved: null, ownerApproved: null,
       status: "pending", shippingEta: null, actualCost: null,
       supplier: part?.supplier || "", notes: newNotes,
@@ -142,14 +142,14 @@ export function PurchaseRequestPanel({ db, setDb, workOrderId }) {
                   {pr.supplier && <p className="text-xs text-gray-400">Supplier: {pr.supplier}</p>}
                 </div>
                 <div className="flex gap-1 shrink-0 ml-2">
-                  {pr.status === "pending" && (
+                  {pr.status === "pending" && perms?.partsApproveOrder && (
                     <>
-                      <button onClick={() => updatePRStatus(pr.id, "manager_approved", "managerApproved", "u2")} className="p-1 rounded hover:bg-green-100 text-green-600" title="Manager Approve"><ThumbsUp size={14} /></button>
+                      <button onClick={() => updatePRStatus(pr.id, "manager_approved", "managerApproved", currentUser?.id || "u2")} className="p-1 rounded hover:bg-green-100 text-green-600" title="Manager Approve"><ThumbsUp size={14} /></button>
                       <button onClick={() => updatePRStatus(pr.id, "rejected")} className="p-1 rounded hover:bg-red-100 text-red-600" title="Reject"><ThumbsDown size={14} /></button>
                     </>
                   )}
-                  {pr.status === "manager_approved" && (
-                    <button onClick={() => updatePRStatus(pr.id, "owner_approved", "ownerApproved", "u1")} className="p-1 rounded hover:bg-green-100 text-green-600" title="Owner Approve"><ThumbsUp size={14} /></button>
+                  {pr.status === "manager_approved" && perms?.partsApproveOrder && (
+                    <button onClick={() => updatePRStatus(pr.id, "owner_approved", "ownerApproved", currentUser?.id || "u1")} className="p-1 rounded hover:bg-green-100 text-green-600" title="Owner Approve"><ThumbsUp size={14} /></button>
                   )}
                   {pr.status === "owner_approved" && (
                     <button onClick={() => updatePRStatus(pr.id, "ordered")} className="p-1 rounded hover:bg-purple-100 text-purple-600" title="Mark Ordered"><Truck size={14} /></button>

@@ -9,13 +9,20 @@ const SUPPLY_CATEGORIES = ["All", "Brake Fluid", "Cleaning", "Lubricants", "Tire
 
 export function SuppliesModule({ db, setDb, perms = PERMISSIONS.owner }) {
   const [catFilter, setCatFilter] = useState("All");
+  const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const confirm = useConfirm();
   const toast = useToast();
 
   const supplies = db.supplies || [];
-  const filtered = supplies.filter(s => catFilter === "All" || s.category === catFilter);
+  const filtered = supplies
+    .filter(s => catFilter === "All" || s.category === catFilter)
+    .filter(s => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return s.name.toLowerCase().includes(q) || (s.notes || "").toLowerCase().includes(q) || (s.compatibleWith || "").toLowerCase().includes(q);
+    });
   const lowStockCount = supplies.filter(s => s.currentStock <= s.reorderThreshold).length;
 
   function saveSupply(supply) {
@@ -54,6 +61,13 @@ export function SuppliesModule({ db, setDb, perms = PERMISSIONS.owner }) {
           <p className="text-sm text-gray-500 mt-1">{supplies.length} items | {lowStockCount > 0 ? <span className="text-red-500 font-medium">{lowStockCount} low stock</span> : "Stock levels OK"}</p>
         </div>
         {perms.suppliesEdit && <Button onClick={() => { setEditing(null); setShowForm(true); }}><Plus size={16} /> Add Supply</Button>}
+      </div>
+
+      <div className="relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input type="text" placeholder="Search supplies by name, notes, or compatibility..."
+          value={search} onChange={e => setSearch(e.target.value)}
+          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
       </div>
 
       <div className="flex gap-1 flex-wrap">
