@@ -319,7 +319,7 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
                         </div>
                         {/* Type tag */}
                         <span className="inline-block text-[10px] font-medium uppercase tracking-wide text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded mb-2">
-                          {WO_TYPES.find(t => t.value === wo.type)?.label || wo.type}
+                          {WO_TYPES.find(t => t.value === wo.type)?.label || wo.type}{wo.category ? ` - ${wo.category}` : ""}
                         </span>
                         {/* Meta lines */}
                         <div className="space-y-0.5">

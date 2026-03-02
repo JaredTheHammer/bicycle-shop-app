@@ -4,6 +4,7 @@
 
 - `npx vite build` — production build (~3s, outputs to `dist/`)
 - Dev server: use `preview_start` with `.claude/launch.json` (Vite on port 5173, `--host 0.0.0.0`)
+- launch.json: use `node` + `node_modules/vite/bin/vite.js` — `npx` is not resolved by preview_start
 - No test suite — verify changes via preview server + build check
 
 ## Code Conventions
@@ -31,6 +32,8 @@
 
 ## Gotchas
 
+- PRs require a feature branch — create branch before committing, not after
+- Main branch is `master` (not `main`)
 - Main content scrolls via nested `flex-1 overflow-y-auto` div, not `window` — `window.scrollTo()` won't work
 - Sidebar: hamburger menu appears at `max-lg:` (≤1024px), full sidebar at `lg:`
 - Vite chunk size warning is expected — single-page app bundles everything
