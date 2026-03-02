@@ -30,8 +30,21 @@ export function ClientsModule({ db, setDb, perms = PERMISSIONS.owner }) {
 
   async function deleteClient(id) {
     const client = db.clients.find(c => c.id === id);
-    if (!await confirm(`Delete "${client?.name}" and unlink their bicycles?`, { title: "Delete client?", variant: "danger" })) return;
-    const updated = { ...db, clients: db.clients.filter(c => c.id !== id) };
+    const clientBikeIds = db.bicycles.filter(b => b.clientId === id).map(b => b.id);
+    const activeWOs = db.workOrders.filter(wo => wo.clientId === id && wo.status !== "resolved");
+    const activeBookings = (db.bookings || []).filter(bk => bk.clientId === id && ["pending", "confirmed", "active"].includes(bk.status));
+    if (activeWOs.length > 0 || activeBookings.length > 0) {
+      toast.error(`Cannot delete — ${activeWOs.length} active work order${activeWOs.length !== 1 ? "s" : ""}${activeBookings.length > 0 ? ` and ${activeBookings.length} active booking${activeBookings.length !== 1 ? "s" : ""}` : ""} reference this client.`);
+      return;
+    }
+    const bikeCount = clientBikeIds.length;
+    const extra = bikeCount > 0 ? ` ${bikeCount} bike${bikeCount !== 1 ? "s" : ""} will be unlinked.` : "";
+    if (!await confirm(`Delete "${client?.name}"?${extra}`, { title: "Delete client?", variant: "danger" })) return;
+    const updated = {
+      ...db,
+      clients: db.clients.filter(c => c.id !== id),
+      bicycles: db.bicycles.map(b => b.clientId === id ? { ...b, clientId: null } : b),
+    };
     setDb(updated); saveDB(updated);
     toast.success("Client deleted");
   }

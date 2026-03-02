@@ -229,7 +229,7 @@ export function WorkOrdersModule({ db, setDb, perms = PERMISSIONS.owner, current
             )}
 
             {/* Purchase Request Panel */}
-            <PurchaseRequestPanel db={db} setDb={setDb} workOrderId={wo.id} />
+            <PurchaseRequestPanel db={db} setDb={setDb} workOrderId={wo.id} currentUser={currentUser} perms={perms} />
 
             {/* Bike info + safety callouts */}
             {bike && (

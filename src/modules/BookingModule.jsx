@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { CalendarCheck, Plus, Edit2, Search, X, Save, Trash2, ArrowLeft, ChevronRight, ChevronDown, Clock, CheckCircle, Bike, Users, Eye, Calendar, Mountain, Zap, MapPin } from "lucide-react";
-import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge } from "../components/ui.jsx";
+import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, useConfirm, useToast } from "../components/ui.jsx";
 import { genId, saveDB } from "../lib/db.js";
 import { computePmStatus, PmStatusBadge } from "../lib/pm-engine.jsx";
 
@@ -39,6 +39,7 @@ export function BookingStatusBadge({ status }) {
 }
 
 export function BookingWizard({ db, setDb, currentUser, onBack, preselectedClientId }) {
+  const toast = useToast();
   const isStaff = currentUser.role === "owner" || currentUser.role === "manager";
   const totalSteps = isStaff ? 6 : 5;
   const [step, setStep] = useState(isStaff ? 0 : 1);
@@ -102,6 +103,17 @@ export function BookingWizard({ db, setDb, currentUser, onBack, preselectedClien
   }, [selectedClientId]);
 
   const handleSubmit = () => {
+    // Date overlap detection
+    const overlapping = (db.bookings || []).filter(bk =>
+      bk.bicycleId === selectedBikeId &&
+      ["pending", "confirmed", "active"].includes(bk.status) &&
+      bk.checkoutDate <= returnDate && bk.returnDate >= checkoutDate
+    );
+    if (overlapping.length > 0) {
+      toast.error("This bike is already booked for overlapping dates. Choose different dates or a different bike.");
+      return;
+    }
+
     const bookingId = genId();
     const newBooking = {
       id: bookingId, bicycleId: selectedBikeId, clientId: selectedClientId,
@@ -138,6 +150,7 @@ export function BookingWizard({ db, setDb, currentUser, onBack, preselectedClien
     };
     saveDB(updated);
     setDb(updated);
+    toast.success("Booking confirmed — prep work order created");
     onBack();
   };
 
@@ -376,17 +389,43 @@ export function BookingWizard({ db, setDb, currentUser, onBack, preselectedClien
 export function BikeBookingModule({ db, setDb, perms, currentUser }) {
   const [showWizard, setShowWizard] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const confirm = useConfirm();
+  const toast = useToast();
   const bookings = db.bookings || [];
 
-  const filteredBookings = filter === "all" ? bookings : bookings.filter(b => b.status === filter);
+  const filteredBookings = (filter === "all" ? bookings : bookings.filter(b => b.status === filter))
+    .filter(bk => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      const bike = db.bicycles.find(b => b.id === bk.bicycleId);
+      const client = db.clients.find(c => c.id === bk.clientId);
+      return (bike?.nickname || "").toLowerCase().includes(q) ||
+        (client?.name || "").toLowerCase().includes(q) ||
+        (bk.riderProfile?.name || "").toLowerCase().includes(q);
+    });
 
-  const updateBookingStatus = (bookingId, newStatus) => {
+  const updateBookingStatus = async (bookingId, newStatus) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    const bike = db.bicycles.find(b => b.id === booking?.bicycleId);
+    const bikeLabel = bike?.nickname || "this bike";
+    const statusLabels = { confirmed: "Confirm", active: "Check Out", returned: "Mark as Returned", cancelled: "Cancel" };
+    const label = statusLabels[newStatus] || newStatus;
+    const isCancelOrReturn = newStatus === "cancelled" || newStatus === "returned";
+
+    if (!await confirm(`${label} booking for "${bikeLabel}"?`, {
+      title: `${label} booking?`,
+      variant: isCancelOrReturn ? "danger" : "default",
+      confirmLabel: label,
+    })) return;
+
     const updated = {
       ...db,
       bookings: db.bookings.map(b => b.id === bookingId ? { ...b, status: newStatus, updatedAt: new Date().toISOString().split("T")[0] } : b),
     };
     saveDB(updated);
     setDb(updated);
+    toast.success(`Booking ${newStatus === "cancelled" ? "cancelled" : newStatus}`);
   };
 
   if (showWizard) {
@@ -408,7 +447,15 @@ export function BikeBookingModule({ db, setDb, perms, currentUser }) {
         )}
       </div>
 
-      {/* Status filter */}
+      {/* Search + Status filter */}
+      <div className="relative mb-4">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text" placeholder="Search by bike, client, or rider..."
+          value={search} onChange={e => setSearch(e.target.value)}
+          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
       <div className="flex gap-2 mb-4 flex-wrap">
         {[{ key: "all", label: "All" }, ...Object.entries(BOOKING_STATUSES).map(([k, v]) => ({ key: k, label: v.label }))].map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)}

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { MapPin, Plus, Edit2, X, Save, Trash2, Plane, Hotel, Calendar, Users, Bike, Star, ArrowLeft, CheckCircle, Clock, Eye, LayoutDashboard, BookOpen, DollarSign, FileText } from "lucide-react";
-import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge, StatCard } from "../components/ui.jsx";
+import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, StatusBadge, StatCard, useConfirm, useToast } from "../components/ui.jsx";
 import { genId, saveDB } from "../lib/db.js";
 
 // ─── Grant's UBI Trip Module ─────────────────────────────────────────
 export function TripModule({ db, setDb }) {
   const [tab, setTab] = useState("overview");
   const trip = db.grantTrip;
+  const confirm = useConfirm();
+  const toast = useToast();
 
   function updateTrip(updates) {
     const updated = { ...db, grantTrip: { ...db.grantTrip, ...updates } };
@@ -14,28 +16,36 @@ export function TripModule({ db, setDb }) {
   }
 
   function toggleChecklist(id) {
+    const item = trip.checklist.find(c => c.id === id);
     const cl = trip.checklist.map(c => c.id === id ? { ...c, done: !c.done } : c);
     updateTrip({ checklist: cl });
+    toast.success(item?.done ? "Task unchecked" : "Task completed");
   }
 
   function addJournal(entry) {
     updateTrip({ journal: [...trip.journal, { id: genId(), date: new Date().toISOString().slice(0, 10), entry }] });
+    toast.success("Journal entry added");
   }
 
   function addExpense(exp) {
     updateTrip({ expenses: [...trip.expenses, { ...exp, id: genId() }] });
+    toast.success("Expense added");
   }
 
   function updateExpense(id, updates) {
     updateTrip({ expenses: trip.expenses.map(e => e.id === id ? { ...e, ...updates } : e) });
   }
 
-  function deleteExpense(id) {
+  async function deleteExpense(id) {
+    const exp = trip.expenses.find(e => e.id === id);
+    if (!await confirm(`Delete "${exp?.description || "this expense"}"?`, { title: "Delete expense?", variant: "danger" })) return;
     updateTrip({ expenses: trip.expenses.filter(e => e.id !== id) });
+    toast.success("Expense deleted");
   }
 
   function addChecklistItem(task, dueDate) {
     updateTrip({ checklist: [...trip.checklist, { id: genId(), task, done: false, dueDate }] });
+    toast.success("Task added");
   }
 
   const totalBudget = trip.expenses.reduce((s, e) => s + e.amount, 0);

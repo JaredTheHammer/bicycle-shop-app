@@ -4,6 +4,7 @@ import { Card, Button, Badge, EmptyState } from "../components/ui.jsx";
 import { WO_STATUSES } from "../lib/constants.js";
 import { saveDB } from "../lib/db.js";
 import { computePmStatus, PmStatusBadge } from "../lib/pm-engine.jsx";
+import { checklistStats } from "../lib/checklist.js";
 
 // ─── Tech Queue Dashboard (Phase 2.3) ───────────────────────────────
 export function TechQueueDashboard({ db, setDb, currentUser }) {

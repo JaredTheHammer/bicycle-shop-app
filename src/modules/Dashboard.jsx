@@ -297,7 +297,7 @@ export function Dashboard({ db, onNavigate, perms }) {
         <Card className="p-5">
           <div className="space-y-6">
             {/* Pending Purchase Requests — gated by perms */}
-            {perms?.purchaseApproval && pendingPRs.length > 0 && (
+            {perms?.partsApproveOrder && pendingPRs.length > 0 && (
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <ShoppingCart size={18} /> Pending Approvals
