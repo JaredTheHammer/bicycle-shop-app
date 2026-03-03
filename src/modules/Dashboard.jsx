@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Bike, Wrench, Users, AlertTriangle, Activity, Clock, CheckCircle,
   Calendar, MapPin, ShieldCheck, Zap, Package, ShoppingCart, CalendarCheck,
-  Droplets, Plus, ChevronDown, ChevronRight, MapPinned
+  Droplets, Plus, ChevronDown, ChevronRight, MapPinned, MessageSquare, MoveRight, Edit2
 } from "lucide-react";
 import { Card, StatCard, Badge, StatusBadge, Button } from "../components/ui.jsx";
 import { computePmStatus } from "../lib/pm-engine.jsx";
+import { formatRelativeTime, activityIcon, activityVerb } from "../lib/activity-helpers.js";
 
 // ─── Dashboard ───────────────────────────────────────────────────────
 export function Dashboard({ db, onNavigate, perms }) {
@@ -51,11 +52,24 @@ export function Dashboard({ db, onNavigate, perms }) {
     .sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
     .slice(0, 5);
 
-  // Recent resolved WOs (top 5)
-  const recentResolved = db.workOrders
-    .filter(wo => wo.status === "resolved")
-    .sort((a, b) => new Date(b.completedDate || b.scheduledDate) - new Date(a.completedDate || a.scheduledDate))
-    .slice(0, 5);
+  // Aggregated recent activity across all work orders
+  const recentActivity = useMemo(() => {
+    const allEntries = [];
+    for (const wo of db.workOrders) {
+      for (const entry of (wo.activityLog || [])) {
+        const bike = db.bicycles.find(b => b.id === wo.bicycleId);
+        const author = (db.users || []).find(u => u.id === entry.userId);
+        allEntries.push({
+          ...entry,
+          woId: wo.id,
+          woLabel: wo.description?.slice(0, 40) || (bike?.nickname || bike?.make + " " + bike?.model) || "Work Order",
+          authorName: author?.name || "System",
+        });
+      }
+    }
+    allEntries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    return allEntries.slice(0, 10);
+  }, [db.workOrders, db.bicycles, db.users]);
 
   // Grant's trip — collapsible
   const tripDaysUntil = Math.ceil((new Date(db.grantTrip.travel.departureDate) - new Date()) / (1000 * 60 * 60 * 24));
@@ -323,21 +337,27 @@ export function Dashboard({ db, onNavigate, perms }) {
             {/* Recent Activity */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Clock size={18} /> Recent Activity
+                <Activity size={18} /> Recent Activity
               </h3>
-              {recentResolved.length === 0 ? (
-                <p className="text-sm text-gray-500">No recently resolved work orders.</p>
+              {recentActivity.length === 0 ? (
+                <p className="text-sm text-gray-500">No recent activity recorded.</p>
               ) : (
-                <div className="space-y-2">
-                  {recentResolved.map(wo => {
-                    const bike = db.bicycles.find(b => b.id === wo.bicycleId);
+                <div className="space-y-2.5">
+                  {recentActivity.map(entry => {
+                    const { Icon, bg, color } = activityIcon(entry.action);
                     return (
-                      <div key={wo.id} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm text-gray-900 truncate">{wo.description?.slice(0, 45) || wo.type}{wo.description?.length > 45 ? "..." : ""}</p>
-                          <p className="text-xs text-gray-500">{bike ? (bike.nickname || `${bike.make} ${bike.model}`) : "Unknown"} | {wo.completedDate || wo.scheduledDate}</p>
+                      <div key={entry.id} className="flex items-start gap-2.5 py-1">
+                        <div className={`w-6 h-6 rounded-full ${bg} ${color} flex items-center justify-center shrink-0 mt-0.5`}>
+                          <Icon size={12} />
                         </div>
-                        <Badge color="green">Resolved</Badge>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-gray-900 leading-snug">
+                            <span className="font-medium">{entry.authorName}</span>{" "}
+                            <span className="text-gray-500">{activityVerb(entry.action)}</span>
+                          </p>
+                          <p className="text-xs text-gray-400 truncate">{entry.woLabel}{entry.detail ? ` — ${entry.detail}` : ""}</p>
+                          <p className="text-xs text-gray-300">{formatRelativeTime(entry.timestamp)}</p>
+                        </div>
                       </div>
                     );
                   })}
