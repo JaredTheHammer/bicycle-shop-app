@@ -7,11 +7,13 @@ const CACHE_NAME = "les-bikeshop-v1";
 
 // App shell assets populated at install time by fetching the root document
 // and letting the browser resolve hashed Vite filenames.
+// Derive base path from SW location (works on both dev "/" and GH Pages "/bicycle-shop-app/")
+const BASE = new URL(".", self.location).pathname;
 const SHELL_URLS = [
-  "/",
-  "/manifest.json",
-  "/icons/icon-192.svg",
-  "/icons/icon-512.svg",
+  BASE,
+  `${BASE}manifest.json`,
+  `${BASE}icons/icon-192.svg`,
+  `${BASE}icons/icon-512.svg`,
 ];
 
 // ─── Install: pre-cache app shell ──────────────────────────────────
@@ -138,9 +140,9 @@ self.addEventListener("push", (event) => {
   const title = data.title || "LES Bike Shop";
   const options = {
     body: data.body || "You have a new update",
-    icon: "/icons/icon-192.svg",
-    badge: "/icons/icon-192.svg",
-    data: data.url || "/",
+    icon: `${BASE}icons/icon-192.svg`,
+    badge: `${BASE}icons/icon-192.svg`,
+    data: data.url || BASE,
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });

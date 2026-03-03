@@ -47,7 +47,7 @@ export function IOSInstallPrompt() {
       <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 max-w-sm mx-auto">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
-            <img src="/icons/icon-180.png" alt="" className="w-8 h-8 rounded-lg" />
+            <img src={`${import.meta.env.BASE_URL}icons/icon-180.png`} alt="" className="w-8 h-8 rounded-lg" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
