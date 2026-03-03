@@ -379,7 +379,7 @@ export const defaultDB = {
   ],
   users: [
     { id: "u1", name: "Jared Hamm", email: "jared.m.hamm@gmail.com", role: "owner", pin: "1111", authId: null, phone: "", properties: [], communicationPref: "all", active: true, createdAt: "2026-02-28" },
-    { id: "u2", name: "Grant", email: "grant@les-bikeshop.local", role: "manager", pin: "2222", authId: null, phone: "", properties: [], communicationPref: "all", active: true, createdAt: "2026-02-28" },
+    { id: "u2", name: "Grant", email: "grantkchoo@gmail.com", role: "manager", pin: "2222", authId: null, phone: "", properties: [], communicationPref: "all", active: true, createdAt: "2026-02-28" },
     { id: "u3", name: "Shawn", email: "shawn@les-bikeshop.local", role: "tech", pin: "3333", authId: null, phone: "", properties: [], communicationPref: "internal", active: true, createdAt: "2026-02-28" },
     { id: "u4", name: "Hale Waterous", email: "waterous@les-bikeshop.local", role: "client", pin: "4444", authId: null, phone: "", properties: ["c1"], communicationPref: "silent", active: true, createdAt: "2026-03-01" },
     { id: "u5", name: "Holoholo", email: "holoholo@les-bikeshop.local", role: "client", pin: "5555", authId: null, phone: "", properties: ["c2"], communicationPref: "silent", active: true, createdAt: "2026-03-01" },

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Bike, User, LogOut, WifiOff, Smartphone, RefreshCw, CloudOff, Menu, X } from "lucide-react";
+import { Bike, User, LogOut, WifiOff, Smartphone, RefreshCw, CloudOff, Menu, X, Share } from "lucide-react";
+import { IOSInstallPrompt } from "./components/IOSInstallPrompt.jsx";
 
 // ─── Lib ─────────────────────────────────────────────────────────────
 import { loadDB, fetchDB, saveDB, defaultDB, DB_SCHEMA_VERSION, retrySyncNow, onSyncStatusChange } from "./lib/db.js";
@@ -53,6 +54,14 @@ function AppInner() {
   // ─── PWA: Online status, install prompt, update banner ──────────
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [installPrompt, setInstallPrompt] = useState(null);
+  // iOS doesn't fire beforeinstallprompt — detect it for sidebar hint
+  const showIOSInstallHint = (() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true;
+    return isIOS && !isStandalone;
+  })();
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [syncStatus, setSyncStatus] = useState({ pendingCount: 0, syncing: false });
 
@@ -203,8 +212,8 @@ function AppInner() {
           ))}
         </nav>
 
-        {/* PWA install button */}
-        {installPrompt && (
+        {/* PWA install button — Chrome/Android gets native prompt, iOS gets guidance */}
+        {installPrompt ? (
           <div className={`border-t border-gray-200 ${expanded ? "p-3" : "p-2"}`}>
             <button onClick={handleInstallClick}
               className={`flex items-center gap-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors ${expanded ? "w-full px-3 py-2.5" : "p-2 justify-center"}`}
@@ -212,6 +221,13 @@ function AppInner() {
               <Smartphone size={18} />
               {expanded && "Install App"}
             </button>
+          </div>
+        ) : showIOSInstallHint && expanded && (
+          <div className="border-t border-gray-200 p-3">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <Share size={14} className="text-blue-500 shrink-0" />
+              <span>Tap <strong>Share</strong> → <strong>Add to Home Screen</strong> to install</span>
+            </div>
           </div>
         )}
 
@@ -348,6 +364,8 @@ function AppInner() {
           </div>
         </div>
       </div>
+      {/* ── iOS Install Prompt (Safari only) ───────────────────── */}
+      <IOSInstallPrompt />
     </div>
   );
 }
