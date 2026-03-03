@@ -3,6 +3,7 @@ import { ClipboardCheck, Clock, CheckCircle, AlertTriangle, ChevronRight, Wrench
 import { Card, Button, Badge, EmptyState } from "../components/ui.jsx";
 import { WO_STATUSES } from "../lib/constants.js";
 import { saveDB } from "../lib/db.js";
+import { checklistStats } from "../lib/checklist.js";
 import { computePmStatus, PmStatusBadge } from "../lib/pm-engine.jsx";
 
 // ─── Tech Queue Dashboard (Phase 2.3) ───────────────────────────────

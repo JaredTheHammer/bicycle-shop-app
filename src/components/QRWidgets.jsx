@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { QrCode, Printer, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Modal, Button } from "./ui.jsx";

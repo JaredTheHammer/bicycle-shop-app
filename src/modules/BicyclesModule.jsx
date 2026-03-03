@@ -4,7 +4,7 @@ import { Card, Button, Modal, Input, TextArea, Select, EmptyState, Badge, Status
 import { QRLabel, QRModal, BulkQRPrintButton, assetQRValue } from "../components/QRWidgets.jsx";
 import { computePmStatus, PmStatusBadge } from "../lib/pm-engine.jsx";
 import { genId, saveDB } from "../lib/db.js";
-import { PERMISSIONS } from "../lib/constants.js";
+import { PERMISSIONS, DEFAULT_PM_INTERVAL_DAYS, DEFAULT_PM_INTERVAL_RIDE_DAYS, PM_RIDE_DAY_YELLOW_THRESHOLD } from "../lib/constants.js";
 
 // ─── Bicycles Module ─────────────────────────────────────────────────
 export function BicyclesModule({ db, setDb, perms = PERMISSIONS.owner, currentUser = null }) {
