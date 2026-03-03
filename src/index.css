@@ -1,5 +1,40 @@
 @import "tailwindcss";
 
+/* ─── iOS PWA safe-area support ────────────────────────────────────── */
+/* viewport-fit=cover extends content behind the notch / home indicator.
+   These paddings push content back into the visible safe zone. */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+/* When running as installed PWA (standalone), pad the outer shell */
+@media all and (display-mode: standalone) {
+  body {
+    padding-top: var(--sat);
+    padding-bottom: var(--sab);
+    padding-left: var(--sal);
+    padding-right: var(--sar);
+  }
+}
+
+/* Prevent rubber-band overscroll in iOS standalone mode */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* Prevent text size adjustment on orientation change in iOS */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Smooth momentum scrolling for all scrollable containers */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Toast slide-in animation */
 @keyframes slide-in {
   from { transform: translateX(100%); opacity: 0; }
