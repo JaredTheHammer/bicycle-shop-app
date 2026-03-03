@@ -71,8 +71,12 @@ function AppInner() {
     return unsubscribe;
   }, []);
 
-  // ─── Supabase hydration: fetch fresh data on mount ────────────
-  useEffect(() => {
+  // ─── Supabase hydration: fetch fresh data when authenticated ──
+  // RLS blocks anon reads, so we only fetch after auth is established.
+  // Without this guard, fetchDB() returns empty arrays that overwrite
+  // the local defaultDB — breaking the login gate.
+  const hydrateFromSupabase = () => {
+    setHydrating(true);
     fetchDB().then(freshDb => {
       if (!freshDb) { setHydrating(false); return; }
       const withPM = autoGeneratePMWorkOrders(freshDb);
@@ -80,7 +84,15 @@ function AppInner() {
       if (withPM !== freshDb) saveDB(withPM);
     }).catch(e => console.warn("Supabase fetch failed, using local data", e))
       .finally(() => setHydrating(false));
-  }, []);
+  };
+
+  useEffect(() => {
+    if (auth) {
+      hydrateFromSupabase();
+    } else {
+      setHydrating(false);
+    }
+  }, [auth]);
 
   // ─── Supabase Auth: validate session + listen for changes ──────
   useEffect(() => {
